@@ -1,0 +1,18 @@
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[package]
+authors = ["Davide Di Carlo <daddinuz@gmail.com>"]
+description = "The Rat Programming Language"
+edition = "2021"
+keywords = ["rat", "rust", "programming-language", "concatenative", "concurrency"]
+license = "MPL-2.0"
+name = "rat"
+repository = "https://github.com/daddinuz/rat"
+rust-version = "1.75"
+version = "0.1.0"
+
+[dependencies]
+crossbeam = { version = "0.8", features = ["crossbeam-channel"] }
+pest = "2"
+pest_derive = "2"
+ustr = "1"

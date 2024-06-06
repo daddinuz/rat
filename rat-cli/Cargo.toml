@@ -1,0 +1,22 @@
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[package]
+authors = ["Davide Di Carlo <daddinuz@gmail.com>"]
+description = "The Rat Programming Language"
+edition = "2021"
+keywords = ["rat", "rust", "programming-language", "concatenative", "concurrency"]
+license = "MPL-2.0"
+name = "rat-cli"
+repository = "https://github.com/daddinuz/rat"
+rust-version = "1.75"
+version = "0.1.0"
+
+[dependencies]
+dirs = "5"
+rat = { path = "../rat" }
+rustyline = { version = "14", features = ["derive"] }
+rustyline-derive = "0.10"
+
+[[bin]]
+name = "rat"
+path = "src/main.rs"

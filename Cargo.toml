@@ -1,0 +1,10 @@
+[workspace]
+resolver = "2"
+members = [
+  "rat",
+  "rat-cli",
+]
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
