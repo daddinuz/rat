@@ -5,74 +5,67 @@
  */
 
 Program = _{
-    SOI ~ (Definition | Word | Expression)* ~ EOI
+    SOI ~ (Statement | Expression)* ~ EOI
 }
 
-Definition = {
-    Colon ~ Word ~ (Word | Expression)* ~ Semicolon
+Statement = {
+    (Define | Import)
 }
 
-Colon = @{
-    ":" ~ &BREAK
+Define = {
+    // equal sign is optional for backward compatibility with forth
+    ":" ~ Export? ~ Word ~ "="? ~ Expression+ ~ ";"
 }
 
-Semicolon = @{
-    ";" ~ &BREAK
+Import = {
+    ":" ~ Export? ~ Word ~ "&" ~ Identifier ~ ";"
+}
+
+Export = @{
+    ("^" | "↑")
 }
 
 Word = @{
-    // TODO: this must always be kept in sync with `Word::new`
-    ("!" | "%" | "&" | "*" | "+" | "-" | "/" | "<" | "=" | ">" | "?" | 'A'..'Z' | "^" | "_" | 'a'..'z' | "|" | "~")+ ~ &BREAK
+    ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "-" | "_")* ~ ("!" | "?")?
+}
+
+Identifier = @{
+    Word ~ ("/" ~ Word)*
 }
 
 Expression = {
-    (Boolean | Decimal | Integer | Quote | Signal | String | Symbol)
+    (Boolean | Decimal | Integer | Quote | String | Symbol)
+  | /* actually not part of expression */
+  Identifier
 }
 
 Boolean = @{
-    ("⊥" | "⊤") ~ &BREAK
+    ("⊥" | "⊤")
 }
 
 Decimal = @{
-    ("+" | "-")? ~ "∞" | "0.NaN" | (((ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) | "0") ~ ((^"e" ~ ("+" | "-") ~ ASCII_DIGIT+) | "." ~ ASCII_DIGIT* ~ (^"e" ~ ("+" | "-") ~ ASCII_DIGIT+) | "." ~ ASCII_DIGIT+)) ~ &BREAK
+    ("+" | "-")? ~ ("∞" | "0.NaN" | (((ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) | "0") ~ ((^"e" ~ ("+" | "-") ~ ASCII_DIGIT+) | "." ~ ASCII_DIGIT* ~ (^"e" ~ ("+" | "-") ~ ASCII_DIGIT+) | "." ~ ASCII_DIGIT+)))
 }
 
 Integer = @{
-    ("+" | "-")? ~ ((ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) | "0") ~ &BREAK
+    ("+" | "-")? ~ ((ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) | "0")
 }
 
 Quote = {
-    LeftSquareBracket ~ (Word | Expression)* ~ RightSquareBracket
-}
-
-LeftSquareBracket = @{
-    "["
-}
-
-RightSquareBracket = @{
-    "]" ~ &BREAK
-}
-
-Signal = @{
-    "$" ~ ('A'..'Z' | 'a'..'z')+ ~ &BREAK
+    "[" ~ Expression* ~ "]"
 }
 
 String = ${
-    "\"" ~ StringUnicodeScalarValue* ~ "\"" ~ &BREAK
+    "\"" ~ UnicodeScalarValue* ~ "\""
 }
 
-StringUnicodeScalarValue = @{
+UnicodeScalarValue = @{
     (!("\"" | "\\" | NEWLINE) ~ ANY | "\\" ~ ("\"" | "'" | "\\" | "n" | "r" | "t" | ("u{" ~ ASCII_HEX_DIGIT{1, 4} ~ "}")))
 }
 
 Symbol = ${
-    "'" ~ SymbolUnicodeScalarValue* ~ "'" ~ &BREAK
-}
-
-SymbolUnicodeScalarValue = @{
-    (!("'" | "\\" | NEWLINE) ~ ANY | "\\" ~ ("\"" | "'" | "\\" | "n" | "r" | "t" | ("u{" ~ ASCII_HEX_DIGIT{1, 4} ~ "}")))
+    "$" ~ (Identifier | String)
 }
 
 WHITESPACE = _{ NEWLINE | "\t" | " " }
 COMMENT    = _{ "#" ~ (!NEWLINE ~ ANY)* }
-BREAK      = _{ WHITESPACE | "]" | EOI }

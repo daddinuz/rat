@@ -8,7 +8,7 @@ use std::fmt::{Debug, Display};
 use std::ops::Deref;
 use std::sync::Arc;
 
-use crate::effect::Effect;
+use crate::error::RuntimeError;
 use crate::evaluate::Evaluate;
 use crate::evaluator::Evaluator;
 use crate::expression::Expression;
@@ -27,6 +27,14 @@ impl FromIterator<Expression> for Quote {
                 .peek()
                 .is_some()
                 .then(|| Arc::new(expressions.collect())),
+        }
+    }
+}
+
+impl From<Vec<Expression>> for Quote {
+    fn from(value: Vec<Expression>) -> Self {
+        Self {
+            inner: Some(Arc::new(value)),
         }
     }
 }
@@ -68,6 +76,16 @@ impl Quote {
             .map(|v| v.remove(index))
     }
 
+    pub fn split(&mut self, at: usize) -> Quote {
+        self.inner
+            .as_mut()
+            .map(Arc::make_mut)
+            .map(|v| Self {
+                inner: Some(Arc::new(v.split_off(at))),
+            })
+            .unwrap()
+    }
+
     pub fn as_slice(&self) -> &[Expression] {
         self.inner.as_deref().map(Deref::deref).unwrap_or(&[])
     }
@@ -83,11 +101,11 @@ impl Quote {
     }
 }
 
-impl Evaluate<&mut Evaluator> for Quote {
-    type Output = Result<(), Effect>;
+impl Evaluate<Quote> for &mut Evaluator {
+    type Output = Result<(), RuntimeError>;
 
-    fn evaluate(self, evaluator: &mut Evaluator) -> Self::Output {
-        evaluator.stack.push(Expression::Quote(self));
+    fn evaluate(self, value: Quote) -> Self::Output {
+        self.stack.push(Expression::Quote(value));
         Ok(())
     }
 }

@@ -7,9 +7,10 @@
 mod error;
 
 use std::env;
+use std::fmt::Write;
 use std::fs::{File, OpenOptions};
 use std::io::{ErrorKind, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use rustyline::error::ReadlineError;
 use rustyline::highlight::MatchingBracketHighlighter;
@@ -20,8 +21,7 @@ use rustyline_derive::{Completer, Highlighter, Hinter, Validator};
 
 use rat::evaluate::Evaluate;
 use rat::evaluator::Evaluator;
-use rat::parser::Parser;
-use rat::source::Origin;
+use rat::parser::{Origin, Parser};
 
 use error::{CliError, Consume, Report};
 
@@ -30,35 +30,17 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub fn main() -> Result<(), CliError> {
     let mut parser = Parser::with_prelude();
     let mut evaluator = Evaluator::new();
-
-    let mut source = String::new();
+    let mut source_paths = Vec::new();
+    let mut source_buffer = String::new();
     let mut interactive = false;
     let mut show_usage = false;
     let mut show_license = false;
-    let mut has_source_files = false;
 
     env::args()
         .skip(1)
         .try_for_each(|arg| -> Result<(), CliError> {
             match arg.as_str() {
-                path if !path.starts_with('-') => {
-                    let mut file = File::open(path)?;
-
-                    source.clear();
-                    file.read_to_string(&mut source)?;
-                    has_source_files |= !source.is_empty();
-
-                    match interpret(
-                        Origin::Path(path.into()),
-                        &source,
-                        &mut parser,
-                        &mut evaluator,
-                    ) {
-                        Err(error) if interactive => error.report(),
-                        error @ Err(_) => return error,
-                        _ => (),
-                    }
-                }
+                _ if !arg.starts_with('-') => source_paths.push(arg),
                 "-h" | "--help" => show_usage = true,
                 "-i" | "--interactive" => interactive = true,
                 "--license" => show_license = true,
@@ -68,7 +50,25 @@ pub fn main() -> Result<(), CliError> {
             Ok(())
         })?;
 
-    if !interactive && !has_source_files {
+    for path in source_paths.iter() {
+        let mut file = File::open(path)?;
+
+        source_buffer.clear();
+        file.read_to_string(&mut source_buffer)?;
+
+        match interpret(
+            Origin::Path(Path::new(path)),
+            &source_buffer,
+            &mut parser,
+            &mut evaluator,
+        ) {
+            Err(error) if interactive => error.report(),
+            error @ Err(_) => return error,
+            _ => (),
+        }
+    }
+
+    if !interactive && source_paths.is_empty() {
         if show_usage {
             println!("{USAGE}");
             return Ok(());
@@ -80,8 +80,8 @@ pub fn main() -> Result<(), CliError> {
         }
     }
 
-    if interactive || !has_source_files {
-        repl(&mut parser, &mut evaluator, !has_source_files)?;
+    if interactive || source_paths.is_empty() {
+        repl(&mut parser, &mut evaluator, source_paths.is_empty())?;
     }
 
     Ok(())
@@ -116,7 +116,7 @@ fn repl(
 
     if show_greeting {
         println!(
-            "{}\nRat {} CLI {}\nEnter Ctrl+D to exit.\nThis software is licensed under MPL-2.0 terms, visit https://www.mozilla.org/MPL/2.0/ for more information.\n",
+            "{}{NEWLINE}Rat {} CLI {}{NEWLINE}Enter Ctrl+D to exit.{NEWLINE}This software is licensed under MPL-2.0 terms, visit https://www.mozilla.org/MPL/2.0/ for more information.{NEWLINE}",
             REPL_GREET,
             rat::VERSION,
             VERSION,
@@ -125,9 +125,7 @@ fn repl(
 
     loop {
         match editor.readline(REPL_PROMPT) {
-            Ok(mut line) => {
-                line.retain(|c| c != MULTILINE_OPEN && c != MULTILINE_CLOSE);
-
+            Ok(line) => {
                 let line = line.trim();
 
                 if line.is_empty() {
@@ -157,13 +155,23 @@ fn repl(
 }
 
 fn interpret(
-    origin: impl AsRef<Origin>,
+    origin: Origin,
     source: &str,
     parser: &mut Parser,
     evaluator: &mut Evaluator,
 ) -> Result<(), CliError> {
     let program = parser.parse(origin, source)?;
-    evaluator.evaluate(program)?;
+
+    evaluator.evaluate(program.into_iter()).map_err(|effect| {
+        evaluator.stack.iter().fold(
+            format!("unhandled effect: {effect:?}{NEWLINE}stack (top rightmost):"),
+            |mut acc, exp| {
+                let _ = write!(acc, " {exp:?}");
+                acc
+            },
+        )
+    })?;
+
     Ok(())
 }
 
@@ -193,11 +201,8 @@ impl ConditionalEventHandler for TabEventHandler {
 }
 
 fn history_file_path() -> PathBuf {
-    dirs::home_dir().unwrap_or_default().join(".rat-history")
+    rat::home_dir().join("history")
 }
-
-static MULTILINE_OPEN: char = '{';
-static MULTILINE_CLOSE: char = '}';
 
 static REPL_PROMPT: &str = "rat> ";
 static REPL_GREET: &str = r"
@@ -594,3 +599,9 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   This Source Code Form is "Incompatible With Secondary Licenses", as
   defined by the Mozilla Public License, v. 2.0.
 "###;
+
+#[cfg(windows)]
+const NEWLINE: &str = "\r\n";
+
+#[cfg(not(windows))]
+const NEWLINE: &str = "\n";

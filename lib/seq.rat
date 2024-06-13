@@ -1,0 +1,29 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+: std & rat/std ;
+: math & rat/math ;
+
+: ^empty? = len zero? ;
+
+: ^merge =
+	[std/dup2 [empty?] unary2 or]
+	[dup empty? [pop] [std/popd] if-else]
+	[
+		std/dup2 [first] unary2 lt?
+		[[[first quote] [suffix] std/bi] dip]
+		[[first quote] [suffix] std/bi std/swapd]
+		if-else
+	]
+	[cat]
+	linrec
+;
+
+: ^mergesort =
+	[dup len 1 le?]
+	[]
+	[dup len math/halve split]
+	[merge]
+	binrec
+;

@@ -10,11 +10,9 @@ extern crate pest_derive;
 pub(crate) mod codegen;
 
 pub mod boolean;
-pub mod channel;
 pub mod decimal;
 pub mod integer;
 pub mod quote;
-pub mod signal;
 pub mod string;
 pub mod symbol;
 pub mod verb;
@@ -22,137 +20,161 @@ pub mod verb;
 pub mod expression;
 
 pub mod builtin;
-pub mod effect;
+pub mod dictionary;
+pub mod error;
 pub mod evaluate;
 pub mod evaluator;
+pub mod identifier;
 pub mod parser;
-pub mod source;
-pub mod vocabulary;
 pub mod word;
+
+use std::env;
+use std::path::Path;
+use std::sync::OnceLock;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+#[allow(deprecated)]
+pub fn home_dir() -> &'static Path {
+    static HOME_DIR: OnceLock<Box<Path>> = OnceLock::new();
+
+    HOME_DIR
+        .get_or_init(|| {
+            dirs::home_dir()
+                .or_else(env::home_dir)
+                .unwrap_or_default()
+                .join(".rat")
+                .into()
+        })
+        .as_ref()
+}
+
 #[cfg(test)]
 mod test {
+    use crate::boolean::Boolean;
+    use crate::builtin;
     use crate::evaluate::Evaluate;
     use crate::evaluator::Evaluator;
     use crate::expression::Expression;
     use crate::integer::Integer;
+    use crate::symbol::Symbol;
     use crate::verb::Verb;
-    use crate::{builtin, signal};
+
+    use std::path::Path;
+    use std::process::Command;
 
     #[test]
     fn it_works1() {
         let mut evaluator = Evaluator::default();
         evaluator
-            .evaluate([
-                Expression::Integer(Integer(64)),
-                Expression::Integer(Integer(22)),
-                Expression::Quote([Expression::Verb(Verb(builtin::sub))].into_iter().collect()),
-                Expression::Verb(Verb(builtin::unquote)),
-            ])
+            .evaluate(
+                [
+                    Expression::Integer(Integer(64)),
+                    Expression::Integer(Integer(22)),
+                    Expression::Quote([Expression::Verb(Verb(builtin::sub))].into_iter().collect()),
+                    Expression::Verb(Verb(builtin::unquote)),
+                ]
+                .into_iter(),
+            )
             .unwrap();
 
-        assert!(matches!(
+        assert_eq!(
             evaluator.stack.as_slice(),
             &[Expression::Integer(Integer(42))]
-        ));
+        );
     }
 
     #[test]
     fn it_works2() {
         let mut evaluator = Evaluator::default();
         evaluator
-            .evaluate([
-                Expression::Integer(Integer(1)),
-                Expression::Quote(
-                    [
-                        Expression::Integer(Integer(2)),
-                        Expression::Integer(Integer(1)),
-                        Expression::Verb(Verb(builtin::sub)),
-                        Expression::Verb(Verb(builtin::r#yield)),
-                        Expression::Verb(Verb(builtin::sub)),
-                    ]
-                    .into_iter()
-                    .collect(),
-                ),
-                Expression::Verb(Verb(builtin::unquote)),
-                Expression::Verb(Verb(builtin::unquote)),
-            ])
+            .evaluate(
+                [
+                    Expression::Quote(
+                        [
+                            Expression::Integer(Integer(1)),
+                            Expression::Verb(Verb(builtin::sub)),
+                        ]
+                        .into_iter()
+                        .collect(),
+                    ),
+                    Expression::Quote([Expression::Integer(Integer(42))].into_iter().collect()),
+                    Expression::Symbol(Symbol::stack_underflow()),
+                    Expression::Verb(Verb(builtin::r#try)),
+                ]
+                .into_iter(),
+            )
             .unwrap();
 
-        assert!(matches!(
+        assert_eq!(
             evaluator.stack.as_slice(),
-            &[Expression::Integer(Integer(0))]
-        ));
+            &[Expression::Integer(Integer(42))]
+        );
     }
 
     #[test]
     fn it_works3() {
         let mut evaluator = Evaluator::default();
         evaluator
-            .evaluate([
-                Expression::Quote(
-                    [
-                        Expression::Integer(Integer(1)),
-                        Expression::Verb(Verb(builtin::sub)),
-                    ]
-                    .into_iter()
-                    .collect(),
-                ),
-                Expression::Quote([Expression::Integer(Integer(42))].into_iter().collect()),
-                Expression::Signal(signal::stack_underflow()),
-                Expression::Verb(Verb(builtin::catch)),
-            ])
+            .evaluate(
+                [
+                    // if
+                    Expression::Boolean(Boolean(true)),
+                    Expression::Quote([Expression::Integer(42.into())].into_iter().collect()),
+                    Expression::Verb(Verb(builtin::r#if)),
+                    Expression::Boolean(Boolean(false)),
+                    Expression::Quote([Expression::Integer(42.into())].into_iter().collect()),
+                    Expression::Verb(Verb(builtin::r#if)),
+                    // else
+                    Expression::Boolean(Boolean(true)),
+                    Expression::Quote([Expression::Integer(42.into())].into_iter().collect()),
+                    Expression::Verb(Verb(builtin::r#else)),
+                    Expression::Boolean(Boolean(false)),
+                    Expression::Quote([Expression::Integer(42.into())].into_iter().collect()),
+                    Expression::Verb(Verb(builtin::r#else)),
+                    // if-else
+                    Expression::Boolean(Boolean(true)),
+                    Expression::Quote([Expression::Integer(42.into())].into_iter().collect()),
+                    Expression::Quote([Expression::Integer(24.into())].into_iter().collect()),
+                    Expression::Verb(Verb(builtin::if_else)),
+                    Expression::Boolean(Boolean(false)),
+                    Expression::Quote([Expression::Integer(24.into())].into_iter().collect()),
+                    Expression::Quote([Expression::Integer(42.into())].into_iter().collect()),
+                    Expression::Verb(Verb(builtin::if_else)),
+                ]
+                .into_iter(),
+            )
             .unwrap();
 
-        assert!(matches!(
+        assert_eq!(
             evaluator.stack.as_slice(),
-            &[Expression::Integer(Integer(42))]
-        ));
+            &[
+                Expression::Integer(Integer(42)),
+                Expression::Integer(Integer(42)),
+                Expression::Integer(Integer(42)),
+                Expression::Integer(Integer(42))
+            ]
+        );
     }
 
     #[test]
-    fn it_works4() {
-        let mut evaluator = Evaluator::default();
-        evaluator
-            .evaluate([
-                Expression::Quote(
-                    [
-                        Expression::Integer(Integer(8)),
-                        Expression::Integer(Integer(12)),
-                        Expression::Verb(Verb(builtin::add)),
-                        Expression::Verb(Verb(builtin::produce)),
-                    ]
-                    .into_iter()
-                    .collect(),
-                ),
-                Expression::Verb(Verb(builtin::spawn)),
-                Expression::Quote(
-                    [
-                        Expression::Integer(Integer(10)),
-                        Expression::Integer(Integer(12)),
-                        Expression::Verb(Verb(builtin::add)),
-                        Expression::Verb(Verb(builtin::produce)),
-                    ]
-                    .into_iter()
-                    .collect(),
-                ),
-                Expression::Verb(Verb(builtin::spawn)),
-                Expression::Verb(Verb(builtin::receive)),
-                Expression::Verb(Verb(builtin::swap)),
-                Expression::Verb(Verb(builtin::pop)),
-                Expression::Verb(Verb(builtin::swap)),
-                Expression::Verb(Verb(builtin::receive)),
-                Expression::Verb(Verb(builtin::swap)),
-                Expression::Verb(Verb(builtin::pop)),
-                Expression::Verb(Verb(builtin::add)),
-            ])
+    fn word_and_grammar_are_aligned() {
+        let grammar_path = Path::new(env!("CARGO_WORKSPACE_DIR")).join("rat/src/grammar.pest");
+        let word_path = Path::new(env!("CARGO_WORKSPACE_DIR")).join("rat/src/word.rs");
+        let output = Command::new("md5sum")
+            .arg(&grammar_path)
+            .arg(&word_path)
+            .output()
             .unwrap();
 
-        assert!(matches!(
-            evaluator.stack.as_slice(),
-            &[Expression::Integer(Integer(42))]
-        ));
+        assert_eq!(
+            &output.stdout,
+            format!(
+                "c55d29c3dd9298a203dfc945d9c238cc  {}\nab5aa40ceddd0bc08fbf445cd9fe054e  {}\n",
+                grammar_path.display(),
+                word_path.display()
+            )
+            .as_bytes()
+        );
     }
 }

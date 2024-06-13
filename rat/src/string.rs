@@ -8,7 +8,7 @@ use std::fmt::{Debug, Display};
 use std::ops::Deref;
 use std::sync::Arc;
 
-use crate::effect::Effect;
+use crate::error::RuntimeError;
 use crate::evaluate::Evaluate;
 use crate::evaluator::Evaluator;
 use crate::expression::Expression;
@@ -68,11 +68,11 @@ impl String {
     }
 }
 
-impl Evaluate<&mut Evaluator> for String {
-    type Output = Result<(), Effect>;
+impl Evaluate<String> for &mut Evaluator {
+    type Output = Result<(), RuntimeError>;
 
-    fn evaluate(self, evaluator: &mut Evaluator) -> Self::Output {
-        evaluator.stack.push(Expression::String(self));
+    fn evaluate(self, value: String) -> Self::Output {
+        self.stack.push(Expression::String(value));
         Ok(())
     }
 }

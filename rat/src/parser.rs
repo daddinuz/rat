@@ -6,30 +6,38 @@
 
 use pest::Parser as _;
 
+use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Display;
+use std::path::Path;
 use std::str::FromStr;
+use std::string::String as StdString;
+use std::sync::Arc;
+use std::{env, fs};
 
 use crate::boolean::Boolean;
 use crate::decimal::Decimal;
+use crate::dictionary::{Definition, Dictionary, Visibility};
 use crate::expression::Expression;
+use crate::identifier::{Identifier, OwnedIdentifier};
 use crate::integer::Integer;
 use crate::quote::Quote;
-use crate::signal::Signal;
-use crate::source::Origin;
 use crate::string::String;
 use crate::symbol::Symbol;
-use crate::vocabulary::Vocabulary;
 use crate::word::{OwnedWord, Word};
 
 #[derive(Debug, Default)]
 pub struct Parser {
-    vocabulary: Vocabulary,
+    dictionary: Dictionary,
+    cache: HashMap<OwnedIdentifier, Arc<Dictionary>>,
 }
 
-impl From<Vocabulary> for Parser {
-    fn from(vocabulary: Vocabulary) -> Self {
-        Self { vocabulary }
+impl From<Dictionary> for Parser {
+    fn from(dictionary: Dictionary) -> Self {
+        Self {
+            dictionary,
+            cache: Default::default(),
+        }
     }
 }
 
@@ -40,46 +48,127 @@ impl Parser {
 
     pub fn with_prelude() -> Self {
         Self {
-            vocabulary: Vocabulary::with_prelude(),
+            dictionary: Dictionary::with_prelude(),
+            cache: Default::default(),
         }
     }
 
-    pub fn parse(
-        &mut self,
-        origin: impl AsRef<Origin>,
-        source: &str,
-    ) -> Result<Vec<Expression>, ParseError> {
-        let origin = origin.as_ref();
-        let mut program = Vec::new();
+    pub fn dictionary(&self) -> &Dictionary {
+        &self.dictionary
+    }
+
+    pub fn parse(&mut self, origin: Origin, source: &str) -> Result<Vec<Expression>, ParseError> {
         let pairs = Grammar::parse(Rule::Program, source).map_err(with_origin(origin))?;
+        let mut program = Vec::new();
 
         for pair in pairs {
             match pair.as_rule() {
-                Rule::Definition => {
-                    let (word, definition) = parse_definition(&mut self.vocabulary, origin, pair)?;
-
-                    self.vocabulary.define(word.into(), definition);
-                }
-                Rule::Word => {
-                    let span = pair.as_span();
-                    let word = parse_word(origin, pair)?;
-                    let definition = self
-                        .vocabulary
-                        .lookup(word)
-                        .ok_or_else(|| parse_error(origin, span, UNDEFINED_WORD))?;
-
-                    program.extend_from_slice(definition);
-                }
-                Rule::Expression => {
-                    let expression = parse_expression(&mut self.vocabulary, origin, pair)?;
-                    program.push(expression);
-                }
-                Rule::EOI => (),
+                Rule::Statement => parse_statement(self, origin, pair)?,
+                Rule::Expression => parse_expressions(self, origin, pair, &mut program)?,
+                Rule::EOI => break,
                 rule => unreachable!("unexpected rule: `{rule:?}`"),
             }
         }
 
         Ok(program)
+    }
+
+    fn import(
+        &mut self,
+        word: &Word,
+        identifier: &Identifier,
+        visibility: Visibility,
+    ) -> Result<(), ImportError> {
+        if let Some(dictionary) = self.cache.get(identifier) {
+            self.dictionary.define(
+                word.to_owned(),
+                Definition::Dictionary {
+                    dictionary: dictionary.clone(),
+                    visibility,
+                },
+            );
+
+            return Ok(());
+        }
+
+        let mut words = identifier.words();
+
+        let mut path = if identifier.as_str().starts_with("rat/") {
+            words.next();
+            crate::home_dir().join("lib")
+        } else {
+            env::current_dir()
+                .map_err(|error| ImportError::new(format!("`{}` {}", identifier, error)))?
+        };
+
+        for word in words {
+            if !path.is_dir() {
+                return Err(ImportError::new(format!(
+                    "`{}` {} is not a directory",
+                    identifier,
+                    path.display()
+                )));
+            }
+
+            path.push(word.as_str());
+        }
+
+        path.set_extension("rat");
+
+        if !path.is_file() {
+            return Err(ImportError::new(format!(
+                "`{}` {} is not a regular file",
+                identifier,
+                path.display()
+            )));
+        }
+
+        let source = fs::read_to_string(&path)
+            .map_err(|e| ImportError::new(format!("`{}` {} {}", identifier, path.display(), e)))?;
+
+        let mut parser = Parser::with_prelude();
+
+        parser
+            .parse(Origin::Path(path.as_path()), &source)
+            .map_err(|e| ImportError::new(format!("`{}`\n{}", identifier, e)))?;
+
+        parser.dictionary.retain(|_, d| d.is_extern());
+
+        let dictionary = Arc::new(parser.dictionary);
+
+        self.cache.insert(identifier.to_owned(), dictionary.clone());
+        self.dictionary.define(
+            word.to_owned(),
+            Definition::Dictionary {
+                dictionary,
+                visibility,
+            },
+        );
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Origin<'a> {
+    Path(&'a Path),
+    Unknown,
+}
+
+const _: [(); 16] = [(); std::mem::size_of::<Origin>()];
+
+impl<'a> Origin<'a> {
+    pub fn display(&self) -> impl Display + '_ {
+        self
+    }
+}
+
+impl<'a> Display for Origin<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Origin::Path(path) => path.display().fmt(f),
+            Origin::Unknown => write!(f, "<unknown>"),
+        }
     }
 }
 
@@ -93,6 +182,20 @@ impl FromStr for OwnedWord {
         assert_eq!(pairs.len(), 1);
 
         parse_word(Origin::Unknown, pairs.next().unwrap()).map(ToOwned::to_owned)
+    }
+}
+
+impl FromStr for OwnedIdentifier {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        check_token_boundary(s)?;
+
+        let mut pairs =
+            Grammar::parse(Rule::Identifier, s).map_err(with_origin(Origin::Unknown))?;
+        assert_eq!(pairs.len(), 1);
+
+        parse_identifier(Origin::Unknown, pairs.next().unwrap()).map(ToOwned::to_owned)
     }
 }
 
@@ -152,19 +255,6 @@ impl FromStr for Quote {
     }
 }
 
-impl FromStr for Signal {
-    type Err = ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        check_token_boundary(s)?;
-
-        let mut pairs = Grammar::parse(Rule::Signal, s).map_err(with_origin(Origin::Unknown))?;
-        assert_eq!(pairs.len(), 1);
-
-        parse_signal(pairs.next().unwrap())
-    }
-}
-
 impl FromStr for String {
     type Err = ParseError;
 
@@ -210,6 +300,29 @@ impl Error for ParseError {
     }
 }
 
+#[derive(Debug)]
+pub struct ImportError {
+    message: Box<str>,
+}
+
+impl ImportError {
+    fn new(message: StdString) -> Self {
+        Self {
+            message: message.into(),
+        }
+    }
+}
+
+const _: [(); 16] = [(); std::mem::size_of::<ImportError>()];
+
+impl Display for ImportError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "unable to import: {}", self.message)
+    }
+}
+
+impl Error for ImportError {}
+
 #[derive(Parser)]
 #[grammar = "src/grammar.pest"]
 struct Grammar;
@@ -221,8 +334,9 @@ type PestErrorVariant = pest::error::ErrorVariant<Rule>;
 
 struct PestErrorWithOrigin(PestError);
 
-fn with_origin(origin: impl AsRef<Origin>) -> impl Fn(PestError) -> PestErrorWithOrigin {
-    move |e| PestErrorWithOrigin(e.with_path(origin.as_ref().as_str()))
+fn with_origin(origin: Origin) -> impl Fn(PestError) -> PestErrorWithOrigin + '_ {
+    let path = origin.display().to_string();
+    move |e| PestErrorWithOrigin(e.with_path(&path))
 }
 
 impl From<PestErrorWithOrigin> for ParseError {
@@ -232,84 +346,115 @@ impl From<PestErrorWithOrigin> for ParseError {
     }
 }
 
-fn parse_error(origin: impl AsRef<Origin>, span: PestSpan, message: impl Display) -> ParseError {
-    ParseError {
-        error: PestError::new_from_span(
-            PestErrorVariant::CustomError {
-                message: message.to_string(),
-            },
-            span,
-        )
-        .with_path(origin.as_ref().as_str())
-        .into(),
-    }
+fn parse_error(origin: Origin, span: PestSpan, message: impl Display) -> ParseError {
+    with_origin(origin)(PestError::new_from_span(
+        PestErrorVariant::CustomError {
+            message: message.to_string(),
+        },
+        span,
+    ))
+    .into()
 }
 
-fn parse_definition<'a>(
-    vocabulary: &mut Vocabulary,
-    origin: impl AsRef<Origin>,
-    pair: PestPair<'a>,
-) -> Result<(&'a Word, Box<[Expression]>), ParseError> {
-    assert_eq!(pair.as_rule(), Rule::Definition);
-
-    let mut pairs = pair.into_inner();
-    assert_eq!(Rule::Colon, pairs.next().unwrap().as_rule());
-
-    let word = pairs
-        .next()
-        .map(|p| parse_word(origin.as_ref(), p))
-        .unwrap()?;
-
-    let mut definition = Vec::new();
-    for pair in pairs {
-        match pair.as_rule() {
-            Rule::Word => {
-                let span = pair.as_span();
-                let word = parse_word(origin.as_ref(), pair)?;
-                let expression = vocabulary
-                    .lookup(word)
-                    .ok_or_else(|| parse_error(origin.as_ref(), span, UNDEFINED_WORD))?;
-
-                definition.extend(expression.iter().cloned())
-            }
-            Rule::Expression => {
-                let expression = parse_expression(vocabulary, origin.as_ref(), pair)?;
-                definition.push(expression);
-            }
-            Rule::Semicolon => (),
-            rule => unreachable!("unexpected rule: `{rule:?}`"),
-        }
-    }
-
-    Ok((word, definition.into_boxed_slice()))
-}
-
-fn parse_expression(
-    vocabulary: &mut Vocabulary,
-    origin: impl AsRef<Origin>,
-    pair: PestPair,
-) -> Result<Expression, ParseError> {
-    assert_eq!(pair.as_rule(), Rule::Expression);
+fn parse_statement(parser: &mut Parser, origin: Origin, pair: PestPair) -> Result<(), ParseError> {
+    assert_eq!(pair.as_rule(), Rule::Statement);
     let pair = pair.into_inner().next().unwrap();
 
     match pair.as_rule() {
-        Rule::Boolean => parse_boolean(origin, pair).map(Expression::Boolean),
-        Rule::Decimal => parse_decimal(origin, pair).map(Expression::Decimal),
-        Rule::Integer => parse_integer(origin, pair).map(Expression::Integer),
-        Rule::Quote => parse_quote(vocabulary, origin, pair).map(Expression::Quote),
-        Rule::Signal => parse_signal(pair).map(Expression::Signal),
-        Rule::String => parse_string(origin, pair).map(Expression::String),
-        Rule::Symbol => parse_symbol(origin, pair).map(Expression::Symbol),
+        Rule::Define => parse_define(parser, origin, pair),
+        Rule::Import => parse_import(parser, origin, pair),
         rule => unreachable!("unexpected rule: `{rule:?}`"),
     }
 }
 
-fn parse_word(origin: impl AsRef<Origin>, pair: PestPair) -> Result<&Word, ParseError> {
+fn parse_define(parser: &mut Parser, origin: Origin, pair: PestPair) -> Result<(), ParseError> {
+    assert_eq!(pair.as_rule(), Rule::Define);
+    let mut pairs = pair.into_inner().peekable();
+
+    let visibility = match pairs.peek().unwrap().as_rule() {
+        Rule::Export => {
+            pairs.next().unwrap();
+            Visibility::Extern
+        }
+        _ => Visibility::Intern,
+    };
+
+    let word = pairs.next().map(|p| parse_word(origin, p)).unwrap()?;
+    let mut expressions = Vec::new();
+    pairs.try_for_each(|p| parse_expressions(parser, origin, p, &mut expressions))?;
+
+    parser.dictionary.define(
+        word.to_owned(),
+        Definition::Body {
+            body: expressions.into(),
+            visibility,
+        },
+    );
+
+    Ok(())
+}
+
+fn parse_import(parser: &mut Parser, origin: Origin, pair: PestPair) -> Result<(), ParseError> {
+    assert_eq!(pair.as_rule(), Rule::Import);
+    let span = pair.as_span();
+    let mut pairs = pair.into_inner().peekable();
+
+    let visibility = match pairs.peek().unwrap().as_rule() {
+        Rule::Export => {
+            pairs.next().unwrap();
+            Visibility::Extern
+        }
+        _ => Visibility::Intern,
+    };
+
+    let word = pairs.next().map(|p| parse_word(origin, p)).unwrap()?;
+    let identifier = parse_identifier(origin, pairs.next().unwrap())?;
+
+    parser
+        .import(word, identifier, visibility)
+        .map_err(|e| parse_error(origin, span, e))
+}
+
+fn parse_word<'a>(origin: Origin, pair: PestPair<'a>) -> Result<&'a Word, ParseError> {
     assert_eq!(pair.as_rule(), Rule::Word);
     Word::try_from_literal(pair.as_str()).map_err(|e| parse_error(origin, pair.as_span(), e))
 }
 
-fn parse_boolean(_: impl AsRef<Origin>, pair: PestPair) -> Result<Boolean, ParseError> {
+fn parse_identifier<'a>(origin: Origin, pair: PestPair<'a>) -> Result<&'a Identifier, ParseError> {
+    assert_eq!(pair.as_rule(), Rule::Identifier);
+    Identifier::try_from_literal(pair.as_str()).map_err(|e| parse_error(origin, pair.as_span(), e))
+}
+
+fn parse_expressions(
+    parser: &mut Parser,
+    origin: Origin,
+    pair: PestPair,
+    buf: &mut Vec<Expression>,
+) -> Result<(), ParseError> {
+    assert_eq!(pair.as_rule(), Rule::Expression);
+    let pair = pair.into_inner().next().unwrap();
+
+    match pair.as_rule() {
+        Rule::Boolean => parse_boolean(origin, pair).map(|e| buf.push(Expression::Boolean(e))),
+        Rule::Decimal => parse_decimal(origin, pair).map(|e| buf.push(Expression::Decimal(e))),
+        Rule::Integer => parse_integer(origin, pair).map(|e| buf.push(Expression::Integer(e))),
+        Rule::Quote => parse_quote(parser, origin, pair).map(|e| buf.push(Expression::Quote(e))),
+        Rule::String => parse_string(origin, pair).map(|e| buf.push(Expression::String(e))),
+        Rule::Symbol => parse_symbol(origin, pair).map(|e| buf.push(Expression::Symbol(e))),
+        Rule::Identifier => {
+            let span = pair.as_span();
+            let identifier = parse_identifier(origin, pair)?;
+            parser
+                .dictionary
+                .lookup(identifier)
+                .map(|expressions| buf.extend_from_slice(expressions))
+                .ok_or_else(|| parse_error(origin, span, undefined_identifier(identifier)))
+        }
+        rule => unreachable!("unexpected rule: `{rule:?}`"),
+    }
+}
+
+fn parse_boolean(_: Origin, pair: PestPair) -> Result<Boolean, ParseError> {
     assert_eq!(pair.as_rule(), Rule::Boolean);
     match pair.as_str() {
         "⊥" => Ok(Boolean(false)),
@@ -318,7 +463,7 @@ fn parse_boolean(_: impl AsRef<Origin>, pair: PestPair) -> Result<Boolean, Parse
     }
 }
 
-fn parse_decimal(origin: impl AsRef<Origin>, pair: PestPair) -> Result<Decimal, ParseError> {
+fn parse_decimal(origin: Origin, pair: PestPair) -> Result<Decimal, ParseError> {
     assert_eq!(pair.as_rule(), Rule::Decimal);
     match pair.as_str() {
         "-∞" => Ok(Decimal::NEG_INFINITY),
@@ -332,7 +477,7 @@ fn parse_decimal(origin: impl AsRef<Origin>, pair: PestPair) -> Result<Decimal, 
     }
 }
 
-fn parse_integer(origin: impl AsRef<Origin>, pair: PestPair) -> Result<Integer, ParseError> {
+fn parse_integer(origin: Origin, pair: PestPair) -> Result<Integer, ParseError> {
     assert_eq!(pair.as_rule(), Rule::Integer);
     pair.as_str()
         .parse()
@@ -340,64 +485,37 @@ fn parse_integer(origin: impl AsRef<Origin>, pair: PestPair) -> Result<Integer, 
         .map_err(|e| parse_error(origin, pair.as_span(), e))
 }
 
-fn parse_quote(
-    vocabulary: &mut Vocabulary,
-    origin: impl AsRef<Origin>,
-    pair: PestPair,
-) -> Result<Quote, ParseError> {
+fn parse_quote(parser: &mut Parser, origin: Origin, pair: PestPair) -> Result<Quote, ParseError> {
     assert_eq!(pair.as_rule(), Rule::Quote);
-    let mut quote = Quote::new();
+    let mut expressions = Vec::new();
+    pair.into_inner()
+        .try_for_each(|pair| parse_expressions(parser, origin, pair, &mut expressions))?;
 
-    for pair in pair.into_inner() {
-        match pair.as_rule() {
-            Rule::Word => {
-                let span = pair.as_span();
-                let word = parse_word(origin.as_ref(), pair)?;
-                let definition = vocabulary
-                    .lookup(word)
-                    .ok_or_else(|| parse_error(origin.as_ref(), span, UNDEFINED_WORD))?;
-
-                quote.extend(definition.iter().cloned())
-            }
-            Rule::Expression => {
-                let expression = parse_expression(vocabulary, origin.as_ref(), pair)?;
-                quote.push(expression);
-            }
-            Rule::LeftSquareBracket | Rule::RightSquareBracket => (),
-            rule => unreachable!("unexpected rule: `{rule:?}`"),
-        }
-    }
-
-    Ok(quote)
+    Ok(expressions.into_iter().collect())
 }
 
-fn parse_signal(pair: PestPair) -> Result<Signal, ParseError> {
-    assert_eq!(pair.as_rule(), Rule::Signal);
-    Ok(unsafe { Signal::new(&pair.as_str()[1..]) })
-}
-
-fn parse_string(origin: impl AsRef<Origin>, pair: PestPair) -> Result<String, ParseError> {
+fn parse_string(origin: Origin, pair: PestPair) -> Result<String, ParseError> {
     assert_eq!(pair.as_rule(), Rule::String);
     pair.into_inner()
-        .map(|p| parse_unicode_scalar_value(origin.as_ref(), p))
+        .map(|p| parse_unicode_scalar_value(origin, p))
         .collect()
 }
 
-fn parse_symbol(origin: impl AsRef<Origin>, pair: PestPair) -> Result<Symbol, ParseError> {
+fn parse_symbol(origin: Origin, pair: PestPair) -> Result<Symbol, ParseError> {
     assert_eq!(pair.as_rule(), Rule::Symbol);
-    pair.into_inner()
-        .map(|p| parse_unicode_scalar_value(origin.as_ref(), p))
-        .collect()
+    let pair = pair.into_inner().next().unwrap();
+    match pair.as_rule() {
+        Rule::Identifier => Ok(pair.as_str().chars().collect()),
+        Rule::String => pair
+            .into_inner()
+            .map(|p| parse_unicode_scalar_value(origin, p))
+            .collect(),
+        rule => unreachable!("unexpected rule: `{rule:?}`"),
+    }
 }
 
-fn parse_unicode_scalar_value(
-    origin: impl AsRef<Origin>,
-    pair: PestPair,
-) -> Result<char, ParseError> {
-    assert!(
-        Rule::StringUnicodeScalarValue == pair.as_rule()
-            || Rule::SymbolUnicodeScalarValue == pair.as_rule()
-    );
+fn parse_unicode_scalar_value(origin: Origin, pair: PestPair) -> Result<char, ParseError> {
+    assert_eq!(pair.as_rule(), Rule::UnicodeScalarValue);
 
     match pair.as_str() {
         "\\n" => Ok('\n'),
@@ -409,11 +527,10 @@ fn parse_unicode_scalar_value(
         s => {
             if s.ends_with('}') && s.starts_with("\\u{") {
                 return u32::from_str_radix(&s[3..s.len() - 1], 16)
-                    .map_err(|e| parse_error(origin.as_ref(), pair.as_span(), e))
+                    .map_err(|e| parse_error(origin, pair.as_span(), e))
                     .and_then(|n| {
-                        char::from_u32(n).ok_or_else(|| {
-                            parse_error(origin.as_ref(), pair.as_span(), "Invalid character")
-                        })
+                        char::from_u32(n)
+                            .ok_or_else(|| parse_error(origin, pair.as_span(), "Invalid character"))
                     });
             }
 
@@ -447,7 +564,9 @@ fn check_token_boundary(s: &str) -> Result<(), ParseError> {
     Ok(())
 }
 
-const UNDEFINED_WORD: &str = "undefined word";
+fn undefined_identifier(identifier: &Identifier) -> StdString {
+    format!("undefined identifier: `{identifier}`")
+}
 
 #[cfg(test)]
 mod test {
@@ -456,9 +575,9 @@ mod test {
     use crate::boolean::Boolean;
     use crate::decimal::Decimal;
     use crate::expression::Expression;
+    use crate::identifier::{Identifier, OwnedIdentifier};
     use crate::integer::Integer;
     use crate::quote::Quote;
-    use crate::signal::{self, Signal};
     use crate::string::String;
     use crate::symbol::Symbol;
     use crate::word::{OwnedWord, Word};
@@ -470,6 +589,18 @@ mod test {
         assert_eq!(
             Word::try_from_literal("ans").unwrap(),
             "ans".parse::<OwnedWord>().unwrap().borrow()
+        );
+    }
+
+    #[test]
+    fn parse_identifier() {
+        assert!(Identifier::try_from_literal(" math/abs").is_err());
+        assert!(Identifier::try_from_literal("math/abs ").is_err());
+        assert!(Identifier::try_from_literal("math/").is_err());
+        assert!(Identifier::try_from_literal("/abs").is_err());
+        assert_eq!(
+            Identifier::try_from_literal("math/abs").unwrap(),
+            "math/abs".parse::<OwnedIdentifier>().unwrap().borrow()
         );
     }
 
@@ -500,10 +631,10 @@ mod test {
 
     #[test]
     fn parse_quote() {
-        assert!(" [⊥ ⊤ 42 3.14 $IoError 'hello' \"world\" []]"
+        assert!(" [⊥ ⊤ 42 3.14 $hello \"world\" []]"
             .parse::<Quote>()
             .is_err());
-        assert!("[⊥ ⊤ 42 3.14 $IoError 'hello' \"world\" []] "
+        assert!("[⊥ ⊤ 42 3.14 $hello \"world\" []] "
             .parse::<Quote>()
             .is_err());
         assert_eq!(
@@ -512,26 +643,15 @@ mod test {
                 Expression::Boolean(Boolean(true)),
                 Expression::Integer(Integer(42)),
                 Expression::Decimal(Decimal(3.14)),
-                Expression::Signal(unsafe { Signal::new("IoError") }),
                 Expression::Symbol(Symbol::new("hello")),
                 Expression::String(String::from_utf8("world")),
                 Expression::Quote(Quote::default()),
             ]
             .into_iter()
             .collect::<Quote>(),
-            "[⊥ ⊤ 42 3.14 $IoError 'hello' \"world\" []]"
+            "[⊥ ⊤ 42 3.14 $hello \"world\" []]"
                 .parse::<Quote>()
                 .unwrap()
-        );
-    }
-
-    #[test]
-    fn parse_signal() {
-        assert!(" $StackUnderflow".parse::<Signal>().is_err());
-        assert!("$StackUnderflow ".parse::<Signal>().is_err());
-        assert_eq!(
-            signal::stack_underflow(),
-            "$StackUnderflow".parse().unwrap()
         );
     }
 
@@ -554,14 +674,22 @@ mod test {
 
     #[test]
     fn parse_symbol() {
-        assert!(" 'hello'".parse::<Symbol>().is_err());
-        assert!("'hello' ".parse::<Symbol>().is_err());
+        assert!(" $hello".parse::<Symbol>().is_err());
+        assert!("$hello ".parse::<Symbol>().is_err());
+        assert!(" $\"hello\"".parse::<Symbol>().is_err());
+        assert!("$\"hello\" ".parse::<Symbol>().is_err());
         assert_eq!(
             Symbol::from_iter("hello".chars()),
-            "'hello'".parse().unwrap()
+            "$hello".parse().unwrap()
         );
 
-        assert_eq!(Symbol::from_iter("a\"a".chars()), "'a\"a'".parse().unwrap());
-        assert_eq!(Symbol::from_iter("a'a".chars()), "'a\\'a'".parse().unwrap());
+        assert_eq!(
+            Symbol::from_iter("a\tstring".chars()),
+            "$\"a\tstring\"".parse().unwrap()
+        );
+        assert_eq!(
+            Symbol::from_iter("a\tstring".chars()),
+            r#"$"a\tstring""#.parse().unwrap()
+        );
     }
 }

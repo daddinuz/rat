@@ -13,7 +13,7 @@ use std::ops::{
 };
 
 use crate::codegen;
-use crate::effect::Effect;
+use crate::error::RuntimeError;
 use crate::evaluate::Evaluate;
 use crate::evaluator::Evaluator;
 use crate::expression::Expression;
@@ -61,16 +61,26 @@ impl Decimal {
     }
 
     #[inline]
+    pub fn is_positive(self) -> bool {
+        self.0.is_sign_positive()
+    }
+
+    #[inline]
     pub fn is_zero(self) -> bool {
         matches!(self.0.classify(), FpCategory::Zero)
     }
+
+    #[inline]
+    pub fn is_negative(self) -> bool {
+        self.0.is_sign_negative()
+    }
 }
 
-impl Evaluate<&mut Evaluator> for Decimal {
-    type Output = Result<(), Effect>;
+impl Evaluate<Decimal> for &mut Evaluator {
+    type Output = Result<(), RuntimeError>;
 
-    fn evaluate(self, evaluator: &mut Evaluator) -> Self::Output {
-        evaluator.stack.push(Expression::Decimal(self));
+    fn evaluate(self, value: Decimal) -> Self::Output {
+        self.stack.push(Expression::Decimal(value));
         Ok(())
     }
 }

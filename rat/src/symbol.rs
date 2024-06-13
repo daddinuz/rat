@@ -6,14 +6,14 @@
 
 use ustr::Ustr;
 
-use crate::effect::Effect;
+use crate::error::RuntimeError;
 use crate::evaluate::Evaluate;
 use crate::evaluator::Evaluator;
 use crate::expression::Expression;
 
 use std::fmt::{Debug, Display};
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(Ustr);
 
 impl FromIterator<char> for Symbol {
@@ -27,17 +27,37 @@ impl Symbol {
         Symbol(Ustr::from(s))
     }
 
+    pub fn divide_by_zero() -> Symbol {
+        Symbol::new("DivideByZero")
+    }
+
+    pub fn stack_underflow() -> Symbol {
+        Symbol::new("StackUnderflow")
+    }
+
+    pub fn out_of_range() -> Symbol {
+        Symbol::new("OutOfRange")
+    }
+
+    pub fn type_error() -> Symbol {
+        Symbol::new("TypeError")
+    }
+
+    pub fn io_error() -> Symbol {
+        Symbol::new("IOError")
+    }
+
     #[inline]
     pub fn as_str(&self) -> &str {
         &self.0
     }
 }
 
-impl Evaluate<&mut Evaluator> for Symbol {
-    type Output = Result<(), Effect>;
+impl Evaluate<Symbol> for &mut Evaluator {
+    type Output = Result<(), RuntimeError>;
 
-    fn evaluate(self, evaluator: &mut Evaluator) -> Self::Output {
-        evaluator.stack.push(Expression::Symbol(self));
+    fn evaluate(self, value: Symbol) -> Self::Output {
+        self.stack.push(Expression::Symbol(value));
         Ok(())
     }
 }
@@ -52,7 +72,7 @@ impl Display for Symbol {
 impl Debug for Symbol {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(s) = self;
-        write!(f, "'{}'", s)
+        write!(f, "$\"{}\"", s)
     }
 }
 

@@ -4,47 +4,28 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-use crossbeam::channel::{Receiver, Sender};
-
-use crate::effect::Effect;
+use crate::error::RuntimeError;
 use crate::evaluate::Evaluate;
 use crate::expression::Expression;
 
+#[derive(Default)]
 pub struct Evaluator {
     pub stack: Vec<Expression>,
-    pub channel: Option<(Sender<Expression>, Receiver<Expression>)>,
-}
-
-impl Default for Evaluator {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl Evaluator {
-    pub const fn new() -> Self {
-        Self {
-            stack: Vec::new(),
-            channel: None,
-        }
+    pub fn new() -> Self {
+        Default::default()
     }
 }
 
-impl<P> Evaluate<P> for &mut Evaluator
+impl<I> Evaluate<I> for &mut Evaluator
 where
-    P: IntoIterator<Item = Expression>,
+    I: Iterator<Item = Expression>,
 {
-    type Output = Result<(), Effect>;
+    type Output = Result<(), RuntimeError>;
 
-    fn evaluate(self, program: P) -> Self::Output {
-        program.into_iter().try_for_each(|e| e.evaluate(self))
-    }
-}
-
-impl Evaluate<Expression> for &mut Evaluator {
-    type Output = Result<(), Effect>;
-
-    fn evaluate(self, expression: Expression) -> Self::Output {
-        expression.evaluate(self)
+    fn evaluate(self, mut expressions: I) -> Self::Output {
+        expressions.try_for_each(|e| self.evaluate(e))
     }
 }

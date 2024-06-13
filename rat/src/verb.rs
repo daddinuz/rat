@@ -6,19 +6,18 @@
 
 use std::fmt::{Debug, Display};
 
-use crate::effect::Effect;
+use crate::error::RuntimeError;
 use crate::evaluate::Evaluate;
 use crate::evaluator::Evaluator;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Verb(pub fn(&mut Evaluator) -> Result<(), Effect>);
+pub struct Verb(pub fn(&mut Evaluator) -> Result<(), RuntimeError>);
 
-impl Evaluate<&mut Evaluator> for Verb {
-    type Output = Result<(), Effect>;
+impl Evaluate<Verb> for &mut Evaluator {
+    type Output = Result<(), RuntimeError>;
 
-    fn evaluate(self, evaluator: &mut Evaluator) -> Self::Output {
-        let Self(verb) = self;
-        verb(evaluator)
+    fn evaluate(self, Verb(verb): Verb) -> Self::Output {
+        verb(self)
     }
 }
 
@@ -31,6 +30,6 @@ impl Display for Verb {
 impl Debug for Verb {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(verb) = self;
-        write!(f, "@x{:x}", *verb as usize)
+        write!(f, "{:p}", *verb)
     }
 }

@@ -10,7 +10,6 @@ use std::io::Error as IoError;
 
 use rustyline::error::ReadlineError;
 
-use rat::effect::Effect;
 use rat::parser::ParseError;
 
 pub struct CliError(Box<dyn Error>);
@@ -24,12 +23,6 @@ impl From<ReadlineError> for CliError {
 impl From<ParseError> for CliError {
     fn from(error: ParseError) -> Self {
         Self(error.into())
-    }
-}
-
-impl From<Effect> for CliError {
-    fn from(effect: Effect) -> Self {
-        Self(format!("Unhandled effect: {effect:?}").into())
     }
 }
 

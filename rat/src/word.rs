@@ -7,6 +7,8 @@
 use std::borrow::Borrow;
 use std::error::Error;
 use std::fmt::{Debug, Display};
+use std::ops::Deref;
+use std::sync::Arc;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
@@ -17,51 +19,55 @@ impl ToOwned for Word {
 
     fn to_owned(&self) -> Self::Owned {
         let Self(word) = self;
-        OwnedWord(word.into())
+        OwnedWord { inner: word.into() }
     }
 }
 
 impl Word {
-    /// Whitespaces are not allowed in `literal`.
-    // TODO: this must always be kept in sync with `grammar.pest`
-    pub const fn try_from_literal(literal: &str) -> Result<&Self, InvalidWordLiteral> {
-        let bytes = literal.as_bytes();
-        if bytes.is_empty() {
-            return Err(InvalidWordLiteral);
+    pub(crate) const fn is_valid(bytes: &[u8], start: usize, end: usize) -> bool {
+        if !(start < end
+            && start < bytes.len()
+            && end <= bytes.len()
+            && bytes[start].is_ascii_alphabetic())
+        {
+            return false;
         }
 
-        let mut i = 0;
-        while i < bytes.len() {
+        let mut i = start + 1;
+        while i < end {
             let c = bytes[i];
 
-            if !(b'!' == c
-                || b'%' == c
-                || b'&' == c
-                || b'*' == c
-                || b'+' == c
-                || b'-' == c
-                || b'/' == c
-                || b'<' == c
-                || b'=' == c
-                || b'>' == c
-                || b'?' == c
-                || (b'A' <= c && b'Z' >= c)
-                || b'^' == c
-                || b'_' == c
-                || (b'a' <= c && b'z' >= c)
-                || b'|' == c
-                || b'~' == c)
-            {
-                return Err(InvalidWordLiteral);
+            if !(c.is_ascii_alphanumeric() || c == b'-' || c == b'_') {
+                break;
             }
 
             i += 1;
         }
 
-        let word = literal as *const str as *const Self;
-        // Safety: `Word` is a `repr(transparent)` wrapper around `str`
-        // have a look at: https://stackoverflow.com/a/72106272
-        Ok(unsafe { &*word })
+        if i < end {
+            let c = bytes[i];
+
+            if c == b'!' || c == b'?' {
+                i += 1;
+            }
+        }
+
+        end == i
+    }
+
+    /// Whitespaces are not allowed in `literal`.
+    // TODO: this must always be kept in sync with `grammar.pest`
+    pub const fn try_from_literal(literal: &str) -> Result<&Self, InvalidWordLiteral> {
+        let bytes = literal.as_bytes();
+
+        if Self::is_valid(bytes, 0, bytes.len()) {
+            let word = literal as *const str as *const Self;
+            // Safety: `Word` is a `repr(transparent)` wrapper around `str`
+            // have a look at: https://stackoverflow.com/a/72106272
+            return Ok(unsafe { &*word });
+        }
+
+        Err(InvalidWordLiteral)
     }
 
     #[inline]
@@ -83,7 +89,9 @@ impl Debug for Word {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct OwnedWord(Box<str>);
+pub struct OwnedWord {
+    inner: Arc<str>,
+}
 
 impl From<&Word> for OwnedWord {
     fn from(word: &Word) -> Self {
@@ -91,19 +99,20 @@ impl From<&Word> for OwnedWord {
     }
 }
 
-impl Borrow<Word> for OwnedWord {
-    fn borrow(&self) -> &Word {
-        let word = self.as_str() as *const str as *const Word;
-        // Safety: `Word` is a `repr(transparent)` wrapper around `str`
-        // have a look at: https://stackoverflow.com/a/72106272
-        unsafe { &*word }
+impl Deref for OwnedWord {
+    type Target = Word;
+
+    fn deref(&self) -> &Self::Target {
+        self.borrow()
     }
 }
 
-impl OwnedWord {
-    #[inline]
-    pub fn as_str(&self) -> &str {
-        &self.0
+impl Borrow<Word> for OwnedWord {
+    fn borrow(&self) -> &Word {
+        let word = self.inner.as_ref() as *const str as *const Word;
+        // Safety: `Word` is a `repr(transparent)` wrapper around `str`
+        // have a look at: https://stackoverflow.com/a/72106272
+        unsafe { &*word }
     }
 }
 

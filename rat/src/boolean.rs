@@ -8,7 +8,7 @@ use std::fmt::{Debug, Display};
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
 
 use crate::codegen;
-use crate::effect::Effect;
+use crate::error::RuntimeError;
 use crate::evaluate::Evaluate;
 use crate::evaluator::Evaluator;
 use crate::expression::Expression;
@@ -30,11 +30,11 @@ impl From<Boolean> for bool {
     }
 }
 
-impl Evaluate<&mut Evaluator> for Boolean {
-    type Output = Result<(), Effect>;
+impl Evaluate<Boolean> for &mut Evaluator {
+    type Output = Result<(), RuntimeError>;
 
-    fn evaluate(self, evaluator: &mut Evaluator) -> Self::Output {
-        evaluator.stack.push(Expression::Boolean(self));
+    fn evaluate(self, value: Boolean) -> Self::Output {
+        self.stack.push(Expression::Boolean(value));
         Ok(())
     }
 }

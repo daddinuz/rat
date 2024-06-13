@@ -6,16 +6,14 @@
 
 use std::fmt::{Debug, Display};
 
-use crate::effect::Effect;
+use crate::error::RuntimeError;
 use crate::evaluate::Evaluate;
 use crate::evaluator::Evaluator;
 
 use crate::boolean::Boolean;
-use crate::channel::Channel;
 use crate::decimal::Decimal;
 use crate::integer::Integer;
 use crate::quote::Quote;
-use crate::signal::Signal;
 use crate::string::String;
 use crate::symbol::Symbol;
 use crate::verb::Verb;
@@ -23,30 +21,21 @@ use crate::verb::Verb;
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Expression {
     Boolean(Boolean),
-    Channel(Channel),
     Decimal(Decimal),
     Integer(Integer),
     Quote(Quote),
-    Signal(Signal),
     String(String),
     Symbol(Symbol),
     Verb(Verb),
 }
 
 const _: [(); 16] = [(); std::mem::size_of::<Expression>()];
-const _: [(); 1] = [(); std::mem::size_of::<Result<(), Effect>>()];
+const _: [(); 1] = [(); std::mem::size_of::<Result<(), RuntimeError>>()];
 
 impl From<Boolean> for Expression {
     #[inline]
     fn from(value: Boolean) -> Self {
         Self::Boolean(value)
-    }
-}
-
-impl From<Channel> for Expression {
-    #[inline]
-    fn from(value: Channel) -> Self {
-        Self::Channel(value)
     }
 }
 
@@ -71,13 +60,6 @@ impl From<Quote> for Expression {
     }
 }
 
-impl From<Signal> for Expression {
-    #[inline]
-    fn from(value: Signal) -> Self {
-        Self::Signal(value)
-    }
-}
-
 impl From<String> for Expression {
     #[inline]
     fn from(value: String) -> Self {
@@ -99,20 +81,18 @@ impl From<Verb> for Expression {
     }
 }
 
-impl Evaluate<&mut Evaluator> for Expression {
-    type Output = Result<(), Effect>;
+impl Evaluate<Expression> for &mut Evaluator {
+    type Output = Result<(), RuntimeError>;
 
-    fn evaluate(self, evaluator: &mut Evaluator) -> Self::Output {
-        match self {
-            Expression::Boolean(e) => e.evaluate(evaluator),
-            Expression::Channel(e) => e.evaluate(evaluator),
-            Expression::Decimal(e) => e.evaluate(evaluator),
-            Expression::Integer(e) => e.evaluate(evaluator),
-            Expression::Quote(e) => e.evaluate(evaluator),
-            Expression::Signal(e) => e.evaluate(evaluator),
-            Expression::String(e) => e.evaluate(evaluator),
-            Expression::Symbol(e) => e.evaluate(evaluator),
-            Expression::Verb(e) => e.evaluate(evaluator),
+    fn evaluate(self, expression: Expression) -> Self::Output {
+        match expression {
+            Expression::Boolean(v) => self.evaluate(v),
+            Expression::Decimal(v) => self.evaluate(v),
+            Expression::Integer(v) => self.evaluate(v),
+            Expression::Quote(v) => self.evaluate(v),
+            Expression::String(v) => self.evaluate(v),
+            Expression::Symbol(v) => self.evaluate(v),
+            Expression::Verb(v) => self.evaluate(v),
         }
     }
 }
@@ -120,15 +100,13 @@ impl Evaluate<&mut Evaluator> for Expression {
 impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::Boolean(e) => Display::fmt(e, f),
-            Expression::Channel(e) => Display::fmt(e, f),
-            Expression::Decimal(e) => Display::fmt(e, f),
-            Expression::Integer(e) => Display::fmt(e, f),
-            Expression::Quote(e) => Display::fmt(e, f),
-            Expression::Signal(e) => Display::fmt(e, f),
-            Expression::String(e) => Display::fmt(e, f),
-            Expression::Symbol(e) => Display::fmt(e, f),
-            Expression::Verb(e) => Display::fmt(e, f),
+            Expression::Boolean(v) => Display::fmt(v, f),
+            Expression::Decimal(v) => Display::fmt(v, f),
+            Expression::Integer(v) => Display::fmt(v, f),
+            Expression::Quote(v) => Display::fmt(v, f),
+            Expression::String(v) => Display::fmt(v, f),
+            Expression::Symbol(v) => Display::fmt(v, f),
+            Expression::Verb(v) => Display::fmt(v, f),
         }
     }
 }
@@ -136,15 +114,13 @@ impl Display for Expression {
 impl Debug for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::Boolean(e) => Debug::fmt(e, f),
-            Expression::Channel(e) => Debug::fmt(e, f),
-            Expression::Decimal(e) => Debug::fmt(e, f),
-            Expression::Integer(e) => Debug::fmt(e, f),
-            Expression::Quote(e) => Debug::fmt(e, f),
-            Expression::Signal(e) => Debug::fmt(e, f),
-            Expression::String(e) => Debug::fmt(e, f),
-            Expression::Symbol(e) => Debug::fmt(e, f),
-            Expression::Verb(e) => Debug::fmt(e, f),
+            Expression::Boolean(v) => Debug::fmt(v, f),
+            Expression::Decimal(v) => Debug::fmt(v, f),
+            Expression::Integer(v) => Debug::fmt(v, f),
+            Expression::Quote(v) => Debug::fmt(v, f),
+            Expression::String(v) => Debug::fmt(v, f),
+            Expression::Symbol(v) => Debug::fmt(v, f),
+            Expression::Verb(v) => Debug::fmt(v, f),
         }
     }
 }

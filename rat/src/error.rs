@@ -5,6 +5,4 @@
  */
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Effect {
-    Raise,
-}
+pub struct RuntimeError;
