@@ -61,8 +61,18 @@ impl Decimal {
     }
 
     #[inline]
+    pub fn is_positive(self) -> bool {
+        self.0.is_sign_positive()
+    }
+
+    #[inline]
     pub fn is_zero(self) -> bool {
         matches!(self.0.classify(), FpCategory::Zero)
+    }
+
+    #[inline]
+    pub fn is_negative(self) -> bool {
+        self.0.is_sign_negative()
     }
 }
 

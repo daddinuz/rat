@@ -11,8 +11,10 @@ repository = "https://github.com/daddinuz/rat"
 rust-version = "1.75"
 version = "0.1.0"
 
+[build-dependencies]
+rat = { path = "../rat" }
+
 [dependencies]
-dirs = "5"
 rat = { path = "../rat" }
 rustyline = { version = "14", features = ["derive"] }
 rustyline-derive = "0.10"

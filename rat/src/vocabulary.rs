@@ -8,17 +8,51 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::sync::Arc;
 
 use crate::boolean::Boolean;
 use crate::builtin;
 use crate::decimal::Decimal;
 use crate::expression::Expression;
+use crate::locution::Locution;
 use crate::verb::Verb;
 use crate::word::{OwnedWord, Word};
 
+#[derive(Debug)]
+pub enum Definition {
+    Phrase {
+        phrase: Arc<[Expression]>,
+        visibility: Visibility,
+    },
+    Vocabulary {
+        vocabulary: Arc<Vocabulary>,
+        visibility: Visibility,
+    },
+}
+
+impl Definition {
+    pub fn is_intern(&self) -> bool {
+        Visibility::Intern
+            == match self {
+                Definition::Phrase { visibility, .. } => *visibility,
+                Definition::Vocabulary { visibility, .. } => *visibility,
+            }
+    }
+
+    pub fn is_extern(&self) -> bool {
+        !self.is_intern()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Visibility {
+    Extern,
+    Intern,
+}
+
 #[derive(Debug, Default)]
 pub struct Vocabulary {
-    definitions: HashMap<OwnedWord, Box<[Expression]>>,
+    definitions: HashMap<OwnedWord, Definition>,
 }
 
 impl Vocabulary {
@@ -32,29 +66,76 @@ impl Vocabulary {
         Self {
             definitions: PRELUDE
                 .into_iter()
-                .map(|(word, definition)| (word.into(), definition.into()))
+                .map(|(word, phrase)| {
+                    (
+                        word.into(),
+                        Definition::Phrase {
+                            phrase: phrase.into(),
+                            visibility: Visibility::Intern,
+                        },
+                    )
+                })
                 .collect(),
         }
     }
 
-    pub fn define(
-        &mut self,
-        word: OwnedWord,
-        definition: Box<[Expression]>,
-    ) -> Option<Box<[Expression]>> {
+    pub fn define(&mut self, word: OwnedWord, definition: Definition) -> Option<Definition> {
         self.definitions.insert(word, definition)
     }
 
-    pub fn lookup<W>(&self, word: &W) -> Option<&[Expression]>
+    pub fn get<W>(&self, word: &W) -> Option<&Definition>
     where
         OwnedWord: Borrow<W>,
         W: ?Sized + Eq + Hash,
     {
-        self.definitions.get(word).map(Box::as_ref)
+        self.definitions.get(word)
+    }
+
+    pub fn lookup(&self, locution: &Locution) -> Option<&[Expression]> {
+        let mut words = locution.words();
+        let mut vocabulary = self;
+        let mut is_first_word = true;
+
+        while let Some(word) = words.next() {
+            let definition = vocabulary.get(word)?;
+
+            if !is_first_word && definition.is_intern() {
+                break;
+            }
+
+            match definition {
+                Definition::Phrase { phrase, .. } => {
+                    if words.next().is_some() {
+                        break;
+                    }
+
+                    return Some(phrase);
+                }
+                Definition::Vocabulary {
+                    vocabulary: next_vocabulary,
+                    ..
+                } => vocabulary = next_vocabulary,
+            }
+
+            is_first_word = false;
+        }
+
+        None
+    }
+
+    pub fn definitions(&self) -> impl Iterator<Item = (&OwnedWord, &Definition)> {
+        self.definitions.iter()
+    }
+
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&Word, &Definition) -> bool,
+    {
+        self.definitions.retain(|w, d| f(w, d));
     }
 }
 
-static PRELUDE: [(&Word, &[Expression]); 61] = [
+static PRELUDE: [(&Word, &[Expression]); 64] = [
     (word_literal("neg"), &[Expression::Verb(Verb(builtin::neg))]),
     (
         word_literal("incr"),
@@ -75,6 +156,18 @@ static PRELUDE: [(&Word, &[Expression]); 61] = [
     (word_literal(">="), &[Expression::Verb(Verb(builtin::ge))]),
     (word_literal("<"), &[Expression::Verb(Verb(builtin::lt))]),
     (word_literal("<="), &[Expression::Verb(Verb(builtin::le))]),
+    (
+        word_literal("positive?"),
+        &[Expression::Verb(Verb(builtin::positive))],
+    ),
+    (
+        word_literal("zero?"),
+        &[Expression::Verb(Verb(builtin::zero))],
+    ),
+    (
+        word_literal("negative?"),
+        &[Expression::Verb(Verb(builtin::negative))],
+    ),
     (word_literal("nan"), &[Expression::Decimal(Decimal::NAN)]),
     (
         word_literal("inf"),

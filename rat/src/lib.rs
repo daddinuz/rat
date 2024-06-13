@@ -25,12 +25,31 @@ pub mod builtin;
 pub mod effect;
 pub mod evaluate;
 pub mod evaluator;
+pub mod locution;
 pub mod parser;
-pub mod source;
 pub mod vocabulary;
 pub mod word;
 
+use std::env;
+use std::path::Path;
+use std::sync::OnceLock;
+
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[allow(deprecated)]
+pub fn home_dir() -> &'static Path {
+    static HOME_DIR: OnceLock<Box<Path>> = OnceLock::new();
+
+    HOME_DIR
+        .get_or_init(|| {
+            dirs::home_dir()
+                .or_else(env::home_dir)
+                .unwrap_or_default()
+                .join(".rat")
+                .into()
+        })
+        .as_ref()
+}
 
 #[cfg(test)]
 mod test {

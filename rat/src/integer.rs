@@ -61,8 +61,18 @@ impl Integer {
     }
 
     #[inline]
+    pub const fn is_positive(self) -> bool {
+        self.0.is_positive()
+    }
+
+    #[inline]
     pub const fn is_zero(self) -> bool {
         self.0 == 0
+    }
+
+    #[inline]
+    pub const fn is_negative(self) -> bool {
+        self.0.is_negative()
     }
 }
 

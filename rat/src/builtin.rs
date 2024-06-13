@@ -409,6 +409,75 @@ pub fn le(evaluator: &mut Evaluator) -> Result<(), Effect> {
     }
 }
 
+pub fn positive(evaluator: &mut Evaluator) -> Result<(), Effect> {
+    let stack = &mut evaluator.stack;
+
+    match &stack[..] {
+        [.., Expression::Integer(n)] => {
+            stack.push(Expression::Boolean(Boolean(n.is_positive())));
+            Ok(())
+        }
+        [.., Expression::Decimal(n)] => {
+            stack.push(Expression::Boolean(Boolean(n.is_positive())));
+            Ok(())
+        }
+        [.., _] => {
+            stack.push(signal::type_error().into());
+            Err(Effect::Raise)
+        }
+        _ => {
+            stack.push(signal::stack_underflow().into());
+            Err(Effect::Raise)
+        }
+    }
+}
+
+pub fn zero(evaluator: &mut Evaluator) -> Result<(), Effect> {
+    let stack = &mut evaluator.stack;
+
+    match &stack[..] {
+        [.., Expression::Integer(n)] => {
+            stack.push(Expression::Boolean(Boolean(n.is_zero())));
+            Ok(())
+        }
+        [.., Expression::Decimal(n)] => {
+            stack.push(Expression::Boolean(Boolean(n.is_zero())));
+            Ok(())
+        }
+        [.., _] => {
+            stack.push(signal::type_error().into());
+            Err(Effect::Raise)
+        }
+        _ => {
+            stack.push(signal::stack_underflow().into());
+            Err(Effect::Raise)
+        }
+    }
+}
+
+pub fn negative(evaluator: &mut Evaluator) -> Result<(), Effect> {
+    let stack = &mut evaluator.stack;
+
+    match &stack[..] {
+        [.., Expression::Integer(n)] => {
+            stack.push(Expression::Boolean(Boolean(n.is_negative())));
+            Ok(())
+        }
+        [.., Expression::Decimal(n)] => {
+            stack.push(Expression::Boolean(Boolean(n.is_negative())));
+            Ok(())
+        }
+        [.., _] => {
+            stack.push(signal::type_error().into());
+            Err(Effect::Raise)
+        }
+        _ => {
+            stack.push(signal::stack_underflow().into());
+            Err(Effect::Raise)
+        }
+    }
+}
+
 pub fn not(evaluator: &mut Evaluator) -> Result<(), Effect> {
     let stack = &mut evaluator.stack;
 

@@ -5,24 +5,29 @@
  */
 
 Program = _{
-    SOI ~ (Definition | Word | Expression)* ~ EOI
+    SOI ~ (Definition | Phrase)* ~ EOI
 }
 
 Definition = {
-    Colon ~ Word ~ (Word | Expression)* ~ Semicolon
+    (Division | Colon) ~ Word ~ ((At ~ Locution) | (LeftArrow ~ Phrase)) ~ Semicolon
 }
 
-Colon = @{
-    ":" ~ &BREAK
-}
-
-Semicolon = @{
-    ";" ~ &BREAK
+Phrase = {
+    (Locution | Expression)+
 }
 
 Word = @{
-    // TODO: this must always be kept in sync with `Word::new`
-    ("!" | "%" | "&" | "*" | "+" | "-" | "/" | "<" | "=" | ">" | "?" | 'A'..'Z' | "^" | "_" | 'a'..'z' | "|" | "~")+ ~ &BREAK
+    _Word ~ &BREAK
+}
+
+_Word = @{
+    // TODO: this must always be kept in sync with `Word`
+    ("!" | "%" | "&" | "*" | "+" | "-" | "/" | "<" | "=" | ">" | "?" | 'A'..'Z' | "^" | "_" | 'a'..'z' | "|" | "~")+
+}
+
+Locution = @{
+    // TODO: this must always be kept in sync with `Locution`
+    _Word ~ ("\\" ~ _Word)* ~ &BREAK
 }
 
 Expression = {
@@ -42,15 +47,7 @@ Integer = @{
 }
 
 Quote = {
-    LeftSquareBracket ~ (Word | Expression)* ~ RightSquareBracket
-}
-
-LeftSquareBracket = @{
-    "["
-}
-
-RightSquareBracket = @{
-    "]" ~ &BREAK
+    LeftSquareBracket ~ Phrase? ~ RightSquareBracket
 }
 
 Signal = @{
@@ -71,6 +68,34 @@ Symbol = ${
 
 SymbolUnicodeScalarValue = @{
     (!("'" | "\\" | NEWLINE) ~ ANY | "\\" ~ ("\"" | "'" | "\\" | "n" | "r" | "t" | ("u{" ~ ASCII_HEX_DIGIT{1, 4} ~ "}")))
+}
+
+At = @{
+    "@" ~ &BREAK
+}
+
+Colon = @{
+    ":" ~ &BREAK
+}
+
+Division = @{
+    "÷" ~ &BREAK
+}
+
+LeftArrow = @{
+    "←" ~ &BREAK
+}
+
+Semicolon = @{
+    ";" ~ &BREAK
+}
+
+LeftSquareBracket = @{
+    "["
+}
+
+RightSquareBracket = @{
+    "]" ~ &BREAK
 }
 
 WHITESPACE = _{ NEWLINE | "\t" | " " }

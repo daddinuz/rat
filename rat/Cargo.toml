@@ -13,6 +13,7 @@ version = "0.1.0"
 
 [dependencies]
 crossbeam = { version = "0.8", features = ["crossbeam-channel"] }
+dirs = "5"
 pest = "2"
 pest_derive = "2"
 ustr = "1"

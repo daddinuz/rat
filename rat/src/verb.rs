@@ -31,6 +31,6 @@ impl Display for Verb {
 impl Debug for Verb {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(verb) = self;
-        write!(f, "@x{:x}", *verb as usize)
+        write!(f, "{:p}", *verb)
     }
 }

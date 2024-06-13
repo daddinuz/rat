@@ -9,7 +9,7 @@ mod error;
 use std::env;
 use std::fs::{File, OpenOptions};
 use std::io::{ErrorKind, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use rustyline::error::ReadlineError;
 use rustyline::highlight::MatchingBracketHighlighter;
@@ -20,8 +20,7 @@ use rustyline_derive::{Completer, Highlighter, Hinter, Validator};
 
 use rat::evaluate::Evaluate;
 use rat::evaluator::Evaluator;
-use rat::parser::Parser;
-use rat::source::Origin;
+use rat::parser::{Origin, Parser};
 
 use error::{CliError, Consume, Report};
 
@@ -49,7 +48,7 @@ pub fn main() -> Result<(), CliError> {
                     has_source_files |= !source.is_empty();
 
                     match interpret(
-                        Origin::Path(path.into()),
+                        Origin::Path(Path::new(path)),
                         &source,
                         &mut parser,
                         &mut evaluator,
@@ -125,9 +124,7 @@ fn repl(
 
     loop {
         match editor.readline(REPL_PROMPT) {
-            Ok(mut line) => {
-                line.retain(|c| c != MULTILINE_OPEN && c != MULTILINE_CLOSE);
-
+            Ok(line) => {
                 let line = line.trim();
 
                 if line.is_empty() {
@@ -157,7 +154,7 @@ fn repl(
 }
 
 fn interpret(
-    origin: impl AsRef<Origin>,
+    origin: Origin,
     source: &str,
     parser: &mut Parser,
     evaluator: &mut Evaluator,
@@ -193,11 +190,8 @@ impl ConditionalEventHandler for TabEventHandler {
 }
 
 fn history_file_path() -> PathBuf {
-    dirs::home_dir().unwrap_or_default().join(".rat-history")
+    rat::home_dir().join("history")
 }
-
-static MULTILINE_OPEN: char = '{';
-static MULTILINE_CLOSE: char = '}';
 
 static REPL_PROMPT: &str = "rat> ";
 static REPL_GREET: &str = r"
