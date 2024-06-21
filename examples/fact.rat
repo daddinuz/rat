@@ -1,0 +1,2 @@
+: fact ← [dup zero?] [incr] [dup decr] [mul] linrec ;
+5 fact say

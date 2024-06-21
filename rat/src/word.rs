@@ -30,34 +30,46 @@ impl Word {
         }
 
         let mut i = start;
+
         while i < end {
             let c = bytes[i];
 
-            if !(b'!' == c
-                || b'%' == c
-                || b'&' == c
-                || b'*' == c
-                || b'+' == c
-                || b'-' == c
-                || b'/' == c
-                || b'<' == c
-                || b'=' == c
-                || b'>' == c
-                || b'?' == c
-                || (b'A' <= c && b'Z' >= c)
-                || b'^' == c
-                || b'_' == c
-                || (b'a' <= c && b'z' >= c)
-                || b'|' == c
-                || b'~' == c)
-            {
-                return false;
+            if !(c == b'-' || c.is_ascii_digit() || c == b'_') {
+                break;
             }
 
             i += 1;
         }
 
-        true
+        while i < end {
+            let c = bytes[i];
+
+            if !c.is_ascii_alphabetic() {
+                break;
+            }
+
+            i += 1;
+        }
+
+        while i < end {
+            let c = bytes[i];
+
+            if !(c == b'-' || c.is_ascii_alphanumeric() || c == b'_') {
+                break;
+            }
+
+            i += 1;
+        }
+
+        if i < end {
+            let c = bytes[i];
+
+            if c == b'!' || c == b'?' {
+                i += 1;
+            }
+        }
+
+        end == i
     }
 
     /// Whitespaces are not allowed in `literal`.

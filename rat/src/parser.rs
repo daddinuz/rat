@@ -411,7 +411,7 @@ fn parse_definition(parser: &mut Parser, origin: Origin, pair: PestPair) -> Resu
 }
 
 fn parse_word<'a>(origin: Origin, pair: PestPair<'a>) -> Result<&'a Word, ParseError> {
-    assert!(matches!(pair.as_rule(), Rule::Word | Rule::_Word));
+    assert_eq!(pair.as_rule(), Rule::Word);
     Word::try_from_literal(pair.as_str()).map_err(|e| parse_error(origin, pair.as_span(), e))
 }
 

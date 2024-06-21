@@ -160,11 +160,7 @@ mod test {
                 Expression::Verb(Verb(builtin::spawn)),
                 Expression::Verb(Verb(builtin::receive)),
                 Expression::Verb(Verb(builtin::swap)),
-                Expression::Verb(Verb(builtin::pop)),
-                Expression::Verb(Verb(builtin::swap)),
                 Expression::Verb(Verb(builtin::receive)),
-                Expression::Verb(Verb(builtin::swap)),
-                Expression::Verb(Verb(builtin::pop)),
                 Expression::Verb(Verb(builtin::add)),
             ])
             .unwrap();

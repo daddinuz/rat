@@ -17,17 +17,17 @@ Phrase = {
 }
 
 Word = @{
-    _Word ~ &BREAK
-}
-
-_Word = @{
     // TODO: this must always be kept in sync with `Word`
-    ("!" | "%" | "&" | "*" | "+" | "-" | "/" | "<" | "=" | ">" | "?" | 'A'..'Z' | "^" | "_" | 'a'..'z' | "|" | "~")+
+    ( ("-" | '0'..'9' | "_")*
+    ~ ('A'..'Z' | 'a'..'z')
+    ~ ("-" | '0'..'9' | 'A'..'Z' | "_" | 'a'..'z')*
+    ~ ("!" | "?")?
+    )
 }
 
 Locution = @{
     // TODO: this must always be kept in sync with `Locution`
-    _Word ~ ("\\" ~ _Word)* ~ &BREAK
+    Word ~ ("\\" ~ Word)*
 }
 
 Expression = {
@@ -35,15 +35,15 @@ Expression = {
 }
 
 Boolean = @{
-    ("⊥" | "⊤") ~ &BREAK
+    ("⊥" | "⊤")
 }
 
 Decimal = @{
-    ("+" | "-")? ~ "∞" | "0.NaN" | (((ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) | "0") ~ ((^"e" ~ ("+" | "-") ~ ASCII_DIGIT+) | "." ~ ASCII_DIGIT* ~ (^"e" ~ ("+" | "-") ~ ASCII_DIGIT+) | "." ~ ASCII_DIGIT+)) ~ &BREAK
+    ("+" | "-")? ~ "∞" | "0.NaN" | (((ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) | "0") ~ ((^"e" ~ ("+" | "-") ~ ASCII_DIGIT+) | "." ~ ASCII_DIGIT* ~ (^"e" ~ ("+" | "-") ~ ASCII_DIGIT+) | "." ~ ASCII_DIGIT+))
 }
 
 Integer = @{
-    ("+" | "-")? ~ ((ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) | "0") ~ &BREAK
+    ("+" | "-")? ~ ((ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) | "0")
 }
 
 Quote = {
@@ -51,11 +51,11 @@ Quote = {
 }
 
 Signal = @{
-    "$" ~ ('A'..'Z' | 'a'..'z')+ ~ &BREAK
+    "$" ~ ('A'..'Z' | 'a'..'z')+
 }
 
 String = ${
-    "\"" ~ StringUnicodeScalarValue* ~ "\"" ~ &BREAK
+    "\"" ~ StringUnicodeScalarValue* ~ "\""
 }
 
 StringUnicodeScalarValue = @{
@@ -63,7 +63,7 @@ StringUnicodeScalarValue = @{
 }
 
 Symbol = ${
-    "'" ~ SymbolUnicodeScalarValue* ~ "'" ~ &BREAK
+    "'" ~ SymbolUnicodeScalarValue* ~ "'"
 }
 
 SymbolUnicodeScalarValue = @{
@@ -71,23 +71,23 @@ SymbolUnicodeScalarValue = @{
 }
 
 At = @{
-    "@" ~ &BREAK
+    "@"
 }
 
 Colon = @{
-    ":" ~ &BREAK
+    ":"
 }
 
 Division = @{
-    "÷" ~ &BREAK
+    "÷"
 }
 
 LeftArrow = @{
-    "←" ~ &BREAK
+    "←"
 }
 
 Semicolon = @{
-    ";" ~ &BREAK
+    ";"
 }
 
 LeftSquareBracket = @{
@@ -95,9 +95,8 @@ LeftSquareBracket = @{
 }
 
 RightSquareBracket = @{
-    "]" ~ &BREAK
+    "]"
 }
 
 WHITESPACE = _{ NEWLINE | "\t" | " " }
 COMMENT    = _{ "#" ~ (!NEWLINE ~ ANY)* }
-BREAK      = _{ WHITESPACE | "]" | EOI }

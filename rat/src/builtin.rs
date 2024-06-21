@@ -227,25 +227,10 @@ pub fn eq(evaluator: &mut Evaluator) -> Result<(), Effect> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
-        [.., ref mut lhs @ Expression::Integer(_), Expression::Integer(r)] => match *lhs {
-            Expression::Integer(l) => {
-                *lhs = Expression::Boolean(Boolean(l == r));
-                stack.pop();
-                Ok(())
-            }
-            _ => unreachable!(),
-        },
-        [.., ref mut lhs @ Expression::Decimal(_), Expression::Decimal(r)] => match *lhs {
-            Expression::Decimal(l) => {
-                *lhs = Expression::Boolean(Boolean(l == r));
-                stack.pop();
-                Ok(())
-            }
-            _ => unreachable!(),
-        },
-        [.., _, _] => {
-            stack.push(signal::type_error().into());
-            Err(Effect::Raise)
+        [.., ref mut lhs, ref rhs] => {
+            *lhs = Expression::Boolean(Boolean(*lhs == *rhs));
+            stack.pop();
+            Ok(())
         }
         _ => {
             stack.push(signal::stack_underflow().into());
@@ -258,25 +243,10 @@ pub fn ne(evaluator: &mut Evaluator) -> Result<(), Effect> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
-        [.., ref mut lhs @ Expression::Integer(_), Expression::Integer(r)] => match *lhs {
-            Expression::Integer(l) => {
-                *lhs = Expression::Boolean(Boolean(l != r));
-                stack.pop();
-                Ok(())
-            }
-            _ => unreachable!(),
-        },
-        [.., ref mut lhs @ Expression::Decimal(_), Expression::Decimal(r)] => match *lhs {
-            Expression::Decimal(l) => {
-                *lhs = Expression::Boolean(Boolean(l != r));
-                stack.pop();
-                Ok(())
-            }
-            _ => unreachable!(),
-        },
-        [.., _, _] => {
-            stack.push(signal::type_error().into());
-            Err(Effect::Raise)
+        [.., ref mut lhs, ref rhs] => {
+            *lhs = Expression::Boolean(Boolean(*lhs != *rhs));
+            stack.pop();
+            Ok(())
         }
         _ => {
             stack.push(signal::stack_underflow().into());
@@ -414,11 +384,11 @@ pub fn positive(evaluator: &mut Evaluator) -> Result<(), Effect> {
 
     match &stack[..] {
         [.., Expression::Integer(n)] => {
-            stack.push(Expression::Boolean(Boolean(n.is_positive())));
+            *stack.last_mut().unwrap() = Expression::Boolean(Boolean(n.is_positive()));
             Ok(())
         }
         [.., Expression::Decimal(n)] => {
-            stack.push(Expression::Boolean(Boolean(n.is_positive())));
+            *stack.last_mut().unwrap() = Expression::Boolean(Boolean(n.is_positive()));
             Ok(())
         }
         [.., _] => {
@@ -437,11 +407,11 @@ pub fn zero(evaluator: &mut Evaluator) -> Result<(), Effect> {
 
     match &stack[..] {
         [.., Expression::Integer(n)] => {
-            stack.push(Expression::Boolean(Boolean(n.is_zero())));
+            *stack.last_mut().unwrap() = Expression::Boolean(Boolean(n.is_zero()));
             Ok(())
         }
         [.., Expression::Decimal(n)] => {
-            stack.push(Expression::Boolean(Boolean(n.is_zero())));
+            *stack.last_mut().unwrap() = Expression::Boolean(Boolean(n.is_zero()));
             Ok(())
         }
         [.., _] => {
@@ -460,11 +430,11 @@ pub fn negative(evaluator: &mut Evaluator) -> Result<(), Effect> {
 
     match &stack[..] {
         [.., Expression::Integer(n)] => {
-            stack.push(Expression::Boolean(Boolean(n.is_negative())));
+            *stack.last_mut().unwrap() = Expression::Boolean(Boolean(n.is_negative()));
             Ok(())
         }
         [.., Expression::Decimal(n)] => {
-            stack.push(Expression::Boolean(Boolean(n.is_negative())));
+            *stack.last_mut().unwrap() = Expression::Boolean(Boolean(n.is_negative()));
             Ok(())
         }
         [.., _] => {
@@ -595,7 +565,7 @@ pub fn bitwise_xor(evaluator: &mut Evaluator) -> Result<(), Effect> {
             Ok(())
         }
         [.., Expression::Boolean(ref mut lhs), Expression::Boolean(rhs)] => {
-            *lhs = Boolean(*lhs != rhs);
+            *lhs ^= rhs;
             stack.pop();
             Ok(())
         }
@@ -791,6 +761,32 @@ pub fn x(evaluator: &mut Evaluator) -> Result<(), Effect> {
     i(evaluator)
 }
 
+pub fn unary_two(evaluator: &mut Evaluator) -> Result<(), Effect> {
+    let stack = &mut evaluator.stack;
+    let top = stack.len();
+
+    match stack[..] {
+        [.., _, ref mut input2, Expression::Quote(ref mut quote)] => {
+            let quote = std::mem::take(quote);
+            let input2 = std::mem::replace(input2, Expression::Integer(Integer::ZERO));
+
+            stack.truncate(top - 2);
+            evaluator.evaluate(quote.clone())?;
+
+            evaluator.stack.push(input2);
+            evaluator.evaluate(quote)
+        }
+        [.., _, _, _] => {
+            stack.push(signal::type_error().into());
+            Err(Effect::Raise)
+        }
+        _ => {
+            stack.push(signal::stack_underflow().into());
+            Err(Effect::Raise)
+        }
+    }
+}
+
 pub fn dip(evaluator: &mut Evaluator) -> Result<(), Effect> {
     match &evaluator.stack[..] {
         [.., _, Expression::Quote(_)] => {
@@ -931,7 +927,7 @@ pub fn first(evaluator: &mut Evaluator) -> Result<(), Effect> {
                 stack.push(signal::out_of_range().into());
                 Effect::Raise
             })?;
-            stack.push(expression);
+            *stack.last_mut().unwrap() = expression;
             Ok(())
         }
         [.., _] => {
@@ -954,7 +950,7 @@ pub fn last(evaluator: &mut Evaluator) -> Result<(), Effect> {
                 stack.push(signal::out_of_range().into());
                 Effect::Raise
             })?;
-            stack.push(expression);
+            *stack.last_mut().unwrap() = expression;
             Ok(())
         }
         [.., _] => {
@@ -968,21 +964,20 @@ pub fn last(evaluator: &mut Evaluator) -> Result<(), Effect> {
     }
 }
 
-pub fn head(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn prefix(evaluator: &mut Evaluator) -> Result<(), Effect> {
     let stack = &mut evaluator.stack;
 
     match &stack[..] {
         [.., Expression::Quote(quote)] => {
             let quote_len = quote.len();
-
-            if quote_len < 2 {
-                stack.push(signal::out_of_range().into());
-                return Err(Effect::Raise);
-            }
-
-            stack.push(Expression::Quote(
-                quote[..quote_len - 1].iter().cloned().collect(),
-            ));
+            *stack.last_mut().unwrap() = Expression::Quote(
+                quote
+                    .get(..quote_len - 1)
+                    .unwrap_or_default()
+                    .iter()
+                    .cloned()
+                    .collect(),
+            );
 
             Ok(())
         }
@@ -997,20 +992,91 @@ pub fn head(evaluator: &mut Evaluator) -> Result<(), Effect> {
     }
 }
 
-pub fn tail(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn suffix(evaluator: &mut Evaluator) -> Result<(), Effect> {
     let stack = &mut evaluator.stack;
 
     match &stack[..] {
         [.., Expression::Quote(quote)] => {
+            *stack.last_mut().unwrap() =
+                Expression::Quote(quote.get(1..).unwrap_or_default().iter().cloned().collect());
+            Ok(())
+        }
+        [.., _] => {
+            stack.push(signal::type_error().into());
+            Err(Effect::Raise)
+        }
+        _ => {
+            stack.push(signal::stack_underflow().into());
+            Err(Effect::Raise)
+        }
+    }
+}
+
+pub fn at(evaluator: &mut Evaluator) -> Result<(), Effect> {
+    let stack = &mut evaluator.stack;
+
+    match stack[..] {
+        [.., Expression::Quote(ref quote), Expression::Integer(Integer(at))] => {
             let quote_len = quote.len();
 
-            if quote_len < 2 {
+            if at.is_negative() || (at as usize) >= quote_len {
                 stack.push(signal::out_of_range().into());
                 return Err(Effect::Raise);
             }
 
-            stack.push(Expression::Quote(quote[1..].iter().cloned().collect()));
+            let expression = quote[at as usize].clone();
 
+            stack.pop();
+            *stack.last_mut().unwrap() = expression;
+            Ok(())
+        }
+        [.., _, _] => {
+            stack.push(signal::type_error().into());
+            Err(Effect::Raise)
+        }
+        _ => {
+            stack.push(signal::stack_underflow().into());
+            Err(Effect::Raise)
+        }
+    }
+}
+
+pub fn split(evaluator: &mut Evaluator) -> Result<(), Effect> {
+    let stack = &mut evaluator.stack;
+
+    match stack[..] {
+        [.., Expression::Quote(ref mut quote), Expression::Integer(Integer(at))] => {
+            let quote_len = quote.len();
+
+            if at.is_negative() || (at as usize) >= quote_len {
+                stack.push(signal::out_of_range().into());
+                return Err(Effect::Raise);
+            }
+
+            *stack.last_mut().unwrap() = quote.split(at as usize).into();
+            Ok(())
+        }
+        [.., _, _] => {
+            stack.push(signal::type_error().into());
+            Err(Effect::Raise)
+        }
+        _ => {
+            stack.push(signal::stack_underflow().into());
+            Err(Effect::Raise)
+        }
+    }
+}
+
+pub fn len(evaluator: &mut Evaluator) -> Result<(), Effect> {
+    let stack = &mut evaluator.stack;
+
+    match &stack[..] {
+        [.., Expression::Quote(quote)] => {
+            *stack.last_mut().unwrap() = Expression::Integer(Integer(quote.len() as _));
+            Ok(())
+        }
+        [.., Expression::String(string)] => {
+            *stack.last_mut().unwrap() = Expression::Integer(Integer(string.len() as _));
             Ok(())
         }
         [.., _] => {
@@ -1106,19 +1172,19 @@ pub fn dup(evaluator: &mut Evaluator) -> Result<(), Effect> {
     Ok(())
 }
 
+// TODO: review
 pub fn send(evaluator: &mut Evaluator) -> Result<(), Effect> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
-        [.., Expression::Channel(ref channel), ref mut expression] => {
-            let expression = std::mem::replace(expression, Expression::Integer(Integer(0)));
-
-            if channel.send(expression).is_err() {
+        [.., Expression::Channel(ref channel), ref expression] => {
+            if channel.send(expression.clone()).is_err() {
                 stack.push(signal::io_error().into());
                 return Err(Effect::Raise);
             }
 
-            stack.pop();
+            let top = stack.len();
+            stack.truncate(top - 2);
             Ok(())
         }
         [.., _, _] => {
@@ -1138,7 +1204,7 @@ pub fn receive(evaluator: &mut Evaluator) -> Result<(), Effect> {
     match stack[..] {
         [.., Expression::Channel(ref channel)] => match channel.recv() {
             Ok(expression) => {
-                stack.push(expression);
+                *stack.last_mut().unwrap() = expression;
                 Ok(())
             }
             Err(_) => {
@@ -1300,25 +1366,82 @@ pub fn show(evaluator: &mut Evaluator) -> Result<(), Effect> {
     })
 }
 
+pub fn linrec(evaluator: &mut Evaluator) -> Result<(), Effect> {
+    let stack = &mut evaluator.stack;
+
+    match &mut stack[..] {
+        [.., Expression::Quote(check), Expression::Quote(leave), Expression::Quote(split), Expression::Quote(merge)] =>
+        {
+            let merge = std::mem::take(merge);
+            let split = std::mem::take(split);
+            let leave = std::mem::take(leave);
+            let check = std::mem::take(check);
+
+            let top = stack.len();
+            stack.truncate(top - 4);
+
+            linrec_aux(evaluator, &check, &leave, &split, &merge)
+        }
+        [.., _, _, _, _] => {
+            stack.push(signal::type_error().into());
+            Err(Effect::Raise)
+        }
+        _ => {
+            stack.push(signal::stack_underflow().into());
+            Err(Effect::Raise)
+        }
+    }
+}
+
+fn linrec_aux(
+    evaluator: &mut Evaluator,
+    check: &Quote,
+    leave: &Quote,
+    split: &Quote,
+    merge: &Quote,
+) -> Result<(), Effect> {
+    evaluator.evaluate(check.iter().cloned())?;
+
+    match evaluator.stack.pop() {
+        Some(Expression::Boolean(Boolean(value))) => {
+            if value {
+                evaluator.evaluate(leave.iter().cloned())
+            } else {
+                evaluator.evaluate(split.iter().cloned())?;
+                linrec_aux(evaluator, check, leave, split, merge)?;
+                evaluator.evaluate(merge.iter().cloned())
+            }
+        }
+        Some(value) => {
+            evaluator
+                .stack
+                .extend_from_slice(&[value, signal::type_error().into()]);
+            Err(Effect::Raise)
+        }
+        None => {
+            evaluator.stack.push(signal::stack_underflow().into());
+            Err(Effect::Raise)
+        }
+    }
+}
+
 pub fn binrec(evaluator: &mut Evaluator) -> Result<(), Effect> {
     let stack = &mut evaluator.stack;
 
     match &mut stack[..] {
-        [.., value, Expression::Quote(case), Expression::Quote(leave), Expression::Quote(left), Expression::Quote(right), Expression::Quote(merge)] =>
+        [.., Expression::Quote(check), Expression::Quote(leave), Expression::Quote(split), Expression::Quote(merge)] =>
         {
             let merge = std::mem::take(merge);
-            let right = std::mem::take(right);
-            let left = std::mem::take(left);
+            let split = std::mem::take(split);
             let leave = std::mem::take(leave);
-            let case = std::mem::take(case);
-            let value = value.clone();
+            let check = std::mem::take(check);
 
             let top = stack.len();
-            stack.truncate(top - 5);
+            stack.truncate(top - 4);
 
-            binrec_aux(evaluator, value, &case, &leave, &left, &right, &merge)
+            binrec_aux(evaluator, &check, &leave, &split, &merge)
         }
-        [.., _, _, _, _, _, _] => {
+        [.., _, _, _, _] => {
             stack.push(signal::type_error().into());
             Err(Effect::Raise)
         }
@@ -1331,44 +1454,34 @@ pub fn binrec(evaluator: &mut Evaluator) -> Result<(), Effect> {
 
 fn binrec_aux(
     evaluator: &mut Evaluator,
-    value: Expression,
-    case: &Quote,
+    check: &Quote,
     leave: &Quote,
-    left: &Quote,
-    right: &Quote,
+    split: &Quote,
     merge: &Quote,
 ) -> Result<(), Effect> {
-    evaluator.evaluate(case.iter().cloned())?;
+    evaluator.evaluate(check.iter().cloned())?;
 
-    match &mut evaluator.stack[..] {
-        [.., head @ Expression::Boolean(Boolean(false))] => {
-            *head = value.clone();
-            evaluator.evaluate(left.iter().cloned())?;
-            let last = evaluator.stack.last().cloned().ok_or_else(|| {
-                evaluator.stack.push(signal::stack_underflow().into());
-                Effect::Raise
-            })?;
-            binrec_aux(evaluator, last, case, leave, left, right, merge)?;
+    match evaluator.stack.pop() {
+        Some(Expression::Boolean(Boolean(false))) => {
+            evaluator.evaluate(split.iter().cloned())?;
+
+            let value = evaluator.stack.pop().unwrap();
+            binrec_aux(evaluator, check, leave, split, merge)?;
 
             evaluator.stack.push(value);
-            evaluator.evaluate(right.iter().cloned())?;
-            let last = evaluator.stack.last().cloned().ok_or_else(|| {
-                evaluator.stack.push(signal::stack_underflow().into());
-                Effect::Raise
-            })?;
-            binrec_aux(evaluator, last, case, leave, left, right, merge)?;
+            binrec_aux(evaluator, check, leave, split, merge)?;
 
             evaluator.evaluate(merge.iter().cloned())
         }
-        [.., head @ Expression::Boolean(Boolean(true))] => {
-            *head = value;
-            evaluator.evaluate(leave.iter().cloned())
-        }
-        [.., _] => {
-            evaluator.stack.push(signal::type_error().into());
+        Some(Expression::Boolean(Boolean(true))) => evaluator.evaluate(leave.iter().cloned()),
+        Some(expression) => {
+            evaluator
+                .stack
+                .extend_from_slice(&[expression, signal::type_error().into()]);
+
             Err(Effect::Raise)
         }
-        _ => {
+        None => {
             evaluator.stack.push(signal::stack_underflow().into());
             Err(Effect::Raise)
         }

@@ -68,6 +68,16 @@ impl Quote {
             .map(|v| v.remove(index))
     }
 
+    pub fn split(&mut self, at: usize) -> Quote {
+        self.inner
+            .as_mut()
+            .map(Arc::make_mut)
+            .map(|v| Self {
+                inner: Some(Arc::new(v.split_off(at))),
+            })
+            .unwrap()
+    }
+
     pub fn as_slice(&self) -> &[Expression] {
         self.inner.as_deref().map(Deref::deref).unwrap_or(&[])
     }
@@ -102,33 +112,13 @@ impl Deref for Quote {
 
 impl Display for Quote {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.as_slice() {
-            [] => write!(f, "[]"),
-            [v] => write!(f, "[{v}]"),
-            [v, rest @ ..] => {
-                write!(f, "[{v}")?;
-                for v in rest {
-                    write!(f, " {v}")?;
-                }
-                write!(f, "]")
-            }
-        }
+        DisplayAdapter::new(self.as_slice()).display().fmt(f)
     }
 }
 
 impl Debug for Quote {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.as_slice() {
-            [] => write!(f, "[]"),
-            [v] => write!(f, "[{v:?}]"),
-            [v, rest @ ..] => {
-                write!(f, "[{v:?}")?;
-                for v in rest {
-                    write!(f, " {v:?}")?;
-                }
-                write!(f, "]")
-            }
-        }
+        DisplayAdapter::new(self.as_slice()).debug().fmt(f)
     }
 }
 
@@ -265,5 +255,55 @@ impl IntoIterator for Quote {
                 .unwrap_or_default()
                 .into_iter(),
         )
+    }
+}
+
+pub struct DisplayAdapter<'a> {
+    slice: &'a [Expression],
+}
+
+impl<'a> DisplayAdapter<'a> {
+    pub const fn new(slice: &'a [Expression]) -> Self {
+        Self { slice }
+    }
+
+    pub fn display(&self) -> impl Display + '_ {
+        self
+    }
+
+    pub fn debug(&self) -> impl Debug + '_ {
+        self
+    }
+}
+
+impl<'a> Display for DisplayAdapter<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.slice {
+            [] => write!(f, "[]"),
+            [v] => write!(f, "[{v}]"),
+            [v, rest @ ..] => {
+                write!(f, "[{v}")?;
+                for v in rest {
+                    write!(f, " {v}")?;
+                }
+                write!(f, "]")
+            }
+        }
+    }
+}
+
+impl<'a> Debug for DisplayAdapter<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.slice {
+            [] => write!(f, "[]"),
+            [v] => write!(f, "[{v:?}]"),
+            [v, rest @ ..] => {
+                write!(f, "[{v:?}")?;
+                for v in rest {
+                    write!(f, " {v:?}")?;
+                }
+                write!(f, "]")
+            }
+        }
     }
 }

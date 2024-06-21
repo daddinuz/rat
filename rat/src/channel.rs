@@ -25,21 +25,21 @@ pub struct Channel {
 
 impl Channel {
     pub fn spawn(quote: Quote) -> Self {
-        let (sender1, receiver1) = channel::unbounded();
-        let (sender2, receiver2) = channel::unbounded();
+        let (send, consume) = channel::unbounded();
+        let (produce, receive) = channel::unbounded();
 
         let handle = thread::spawn(move || {
             let mut evaluator = Evaluator {
                 stack: Vec::new(),
-                channel: Some((sender2, receiver1)),
+                channel: Some((produce, consume)),
             };
             evaluator.evaluate(quote)
         });
 
         Self {
             inner: Arc::new(Inner {
-                sender: sender1,
-                receiver: receiver2,
+                sender: send,
+                receiver: receive,
                 identity: handle.thread().id(),
             }),
         }

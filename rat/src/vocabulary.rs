@@ -135,7 +135,7 @@ impl Vocabulary {
     }
 }
 
-static PRELUDE: [(&Word, &[Expression]); 64] = [
+static PRELUDE: [(&Word, &[Expression]); 69] = [
     (word_literal("neg"), &[Expression::Verb(Verb(builtin::neg))]),
     (
         word_literal("incr"),
@@ -145,17 +145,17 @@ static PRELUDE: [(&Word, &[Expression]); 64] = [
         word_literal("decr"),
         &[Expression::Verb(Verb(builtin::decr))],
     ),
-    (word_literal("+"), &[Expression::Verb(Verb(builtin::add))]),
-    (word_literal("-"), &[Expression::Verb(Verb(builtin::sub))]),
-    (word_literal("*"), &[Expression::Verb(Verb(builtin::mul))]),
-    (word_literal("/"), &[Expression::Verb(Verb(builtin::div))]),
-    (word_literal("%"), &[Expression::Verb(Verb(builtin::rem))]),
-    (word_literal("="), &[Expression::Verb(Verb(builtin::eq))]),
-    (word_literal("<>"), &[Expression::Verb(Verb(builtin::ne))]),
-    (word_literal(">"), &[Expression::Verb(Verb(builtin::gt))]),
-    (word_literal(">="), &[Expression::Verb(Verb(builtin::ge))]),
-    (word_literal("<"), &[Expression::Verb(Verb(builtin::lt))]),
-    (word_literal("<="), &[Expression::Verb(Verb(builtin::le))]),
+    (word_literal("add"), &[Expression::Verb(Verb(builtin::add))]),
+    (word_literal("sub"), &[Expression::Verb(Verb(builtin::sub))]),
+    (word_literal("mul"), &[Expression::Verb(Verb(builtin::mul))]),
+    (word_literal("div"), &[Expression::Verb(Verb(builtin::div))]),
+    (word_literal("rem"), &[Expression::Verb(Verb(builtin::rem))]),
+    (word_literal("eq"), &[Expression::Verb(Verb(builtin::eq))]),
+    (word_literal("ne"), &[Expression::Verb(Verb(builtin::ne))]),
+    (word_literal("gt"), &[Expression::Verb(Verb(builtin::gt))]),
+    (word_literal("ge"), &[Expression::Verb(Verb(builtin::ge))]),
+    (word_literal("lt"), &[Expression::Verb(Verb(builtin::lt))]),
+    (word_literal("le"), &[Expression::Verb(Verb(builtin::le))]),
     (
         word_literal("positive?"),
         &[Expression::Verb(Verb(builtin::positive))],
@@ -186,25 +186,25 @@ static PRELUDE: [(&Word, &[Expression]); 64] = [
     (word_literal("and"), &[Expression::Verb(Verb(builtin::and))]),
     (word_literal("or"), &[Expression::Verb(Verb(builtin::or))]),
     (
-        word_literal("~"),
+        word_literal("bit-not"),
         &[Expression::Verb(Verb(builtin::bitwise_not))],
     ),
     (
-        word_literal("&"),
+        word_literal("bit-and"),
         &[Expression::Verb(Verb(builtin::bitwise_and))],
     ),
     (
-        word_literal("^"),
+        word_literal("bit-xor"),
         &[Expression::Verb(Verb(builtin::bitwise_xor))],
     ),
     (
-        word_literal("|"),
+        word_literal("bit-or"),
         &[Expression::Verb(Verb(builtin::bitwise_or))],
     ),
-    (word_literal("<<"), &[Expression::Verb(Verb(builtin::shl))]),
-    (word_literal(">>"), &[Expression::Verb(Verb(builtin::shr))]),
+    (word_literal("shl"), &[Expression::Verb(Verb(builtin::shl))]),
+    (word_literal("shr"), &[Expression::Verb(Verb(builtin::shr))]),
     (
-        word_literal(">>>"),
+        word_literal("ushr"),
         &[Expression::Verb(Verb(builtin::ushr))],
     ),
     (word_literal("cat"), &[Expression::Verb(Verb(builtin::cat))]),
@@ -223,13 +223,17 @@ static PRELUDE: [(&Word, &[Expression]); 64] = [
     (word_literal("i"), &[Expression::Verb(Verb(builtin::i))]),
     (word_literal("x"), &[Expression::Verb(Verb(builtin::x))]),
     (word_literal("dip"), &[Expression::Verb(Verb(builtin::dip))]),
+    (
+        word_literal("unary2"),
+        &[Expression::Verb(Verb(builtin::unary_two))],
+    ),
     (word_literal("if"), &[Expression::Verb(Verb(builtin::r#if))]),
     (
         word_literal("else"),
         &[Expression::Verb(Verb(builtin::r#else))],
     ),
     (
-        word_literal("ifElse"),
+        word_literal("if-else"),
         &[Expression::Verb(Verb(builtin::if_else))],
     ),
     (
@@ -253,13 +257,19 @@ static PRELUDE: [(&Word, &[Expression]); 64] = [
         &[Expression::Verb(Verb(builtin::last))],
     ),
     (
-        word_literal("head"),
-        &[Expression::Verb(Verb(builtin::head))],
+        word_literal("prefix"),
+        &[Expression::Verb(Verb(builtin::prefix))],
     ),
     (
-        word_literal("tail"),
-        &[Expression::Verb(Verb(builtin::tail))],
+        word_literal("suffix"),
+        &[Expression::Verb(Verb(builtin::suffix))],
     ),
+    (word_literal("at"), &[Expression::Verb(Verb(builtin::at))]),
+    (
+        word_literal("split"),
+        &[Expression::Verb(Verb(builtin::split))],
+    ),
+    (word_literal("len"), &[Expression::Verb(Verb(builtin::len))]),
     (
         word_literal("swap"),
         &[Expression::Verb(Verb(builtin::swap))],
@@ -303,6 +313,10 @@ static PRELUDE: [(&Word, &[Expression]); 64] = [
     (
         word_literal("show"),
         &[Expression::Verb(Verb(builtin::show))],
+    ),
+    (
+        word_literal("linrec"),
+        &[Expression::Verb(Verb(builtin::linrec))],
     ),
     (
         word_literal("binrec"),
