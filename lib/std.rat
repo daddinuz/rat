@@ -14,3 +14,5 @@
 ÷ bi ← [[quote] dip over [cat] dip] dip cat [i] dip i ;
 
 ÷ case ← swap at i ;
+
+÷ times ← [dup 1 lt] [pop pop] [[dup [i] dip] dip decr] [] linrec ;
