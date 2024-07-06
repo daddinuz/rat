@@ -8,7 +8,7 @@ keywords = ["rat", "rust", "programming-language", "concatenative", "concurrency
 license = "MPL-2.0"
 name = "rat"
 repository = "https://github.com/daddinuz/rat"
-rust-version = "1.75"
+rust-version = "1.77"
 version = "0.1.0"
 
 [dependencies]

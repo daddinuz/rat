@@ -7,6 +7,8 @@ fn main() {
         .unwrap()
         .join("lib");
 
+    println!("cargo::rerun-if-changed={}", source_path.display());
+
     let destination_path = rat::home_dir().join("lib");
 
     fs::create_dir_all(&destination_path).unwrap();
