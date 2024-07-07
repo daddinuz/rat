@@ -14,7 +14,6 @@ pub mod channel;
 pub mod decimal;
 pub mod integer;
 pub mod quote;
-pub mod signal;
 pub mod string;
 pub mod symbol;
 pub mod verb;
@@ -53,12 +52,13 @@ pub fn home_dir() -> &'static Path {
 
 #[cfg(test)]
 mod test {
+    use crate::builtin;
     use crate::evaluate::Evaluate;
     use crate::evaluator::Evaluator;
     use crate::expression::Expression;
     use crate::integer::Integer;
+    use crate::symbol::Symbol;
     use crate::verb::Verb;
-    use crate::{builtin, signal};
 
     #[test]
     fn it_works1() {
@@ -92,7 +92,7 @@ mod test {
                     .collect(),
                 ),
                 Expression::Quote([Expression::Integer(Integer(42))].into_iter().collect()),
-                Expression::Signal(signal::stack_underflow()),
+                Expression::Symbol(Symbol::stack_underflow()),
                 Expression::Verb(Verb(builtin::r#try)),
             ])
             .unwrap();

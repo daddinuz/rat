@@ -21,7 +21,6 @@ use crate::expression::Expression;
 use crate::integer::Integer;
 use crate::locution::{Locution, OwnedLocution};
 use crate::quote::Quote;
-use crate::signal::Signal;
 use crate::string::String;
 use crate::symbol::Symbol;
 use crate::vocabulary::{Definition, Visibility, Vocabulary};
@@ -258,19 +257,6 @@ impl FromStr for Quote {
     }
 }
 
-impl FromStr for Signal {
-    type Err = ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        check_token_boundary(s)?;
-
-        let mut pairs = Grammar::parse(Rule::Signal, s).map_err(with_origin(Origin::Unknown))?;
-        assert_eq!(pairs.len(), 1);
-
-        parse_signal(pairs.next().unwrap())
-    }
-}
-
 impl FromStr for String {
     type Err = ParseError;
 
@@ -433,7 +419,6 @@ fn parse_expression(
         Rule::Decimal => parse_decimal(origin, pair).map(Expression::Decimal),
         Rule::Integer => parse_integer(origin, pair).map(Expression::Integer),
         Rule::Quote => parse_quote(parser, origin, pair).map(Expression::Quote),
-        Rule::Signal => parse_signal(pair).map(Expression::Signal),
         Rule::String => parse_string(origin, pair).map(Expression::String),
         Rule::Symbol => parse_symbol(origin, pair).map(Expression::Symbol),
         rule => unreachable!("unexpected rule: `{rule:?}`"),
@@ -520,11 +505,6 @@ fn parse_quote(parser: &mut Parser, origin: Origin, pair: PestPair) -> Result<Qu
     Ok(quote)
 }
 
-fn parse_signal(pair: PestPair) -> Result<Signal, ParseError> {
-    assert_eq!(pair.as_rule(), Rule::Signal);
-    Ok(unsafe { Signal::new(&pair.as_str()[1..]) })
-}
-
 fn parse_string(origin: Origin, pair: PestPair) -> Result<String, ParseError> {
     assert_eq!(pair.as_rule(), Rule::String);
     pair.into_inner()
@@ -606,7 +586,6 @@ mod test {
     use crate::integer::Integer;
     use crate::locution::{Locution, OwnedLocution};
     use crate::quote::Quote;
-    use crate::signal::{self, Signal};
     use crate::string::String;
     use crate::symbol::Symbol;
     use crate::word::{OwnedWord, Word};
@@ -660,10 +639,10 @@ mod test {
 
     #[test]
     fn parse_quote() {
-        assert!(" [⊥ ⊤ 42 3.14 $IoError 'hello' \"world\" []]"
+        assert!(" [⊥ ⊤ 42 3.14 'hello' \"world\" []]"
             .parse::<Quote>()
             .is_err());
-        assert!("[⊥ ⊤ 42 3.14 $IoError 'hello' \"world\" []] "
+        assert!("[⊥ ⊤ 42 3.14 'hello' \"world\" []] "
             .parse::<Quote>()
             .is_err());
         assert_eq!(
@@ -672,26 +651,15 @@ mod test {
                 Expression::Boolean(Boolean(true)),
                 Expression::Integer(Integer(42)),
                 Expression::Decimal(Decimal(3.14)),
-                Expression::Signal(unsafe { Signal::new("IoError") }),
                 Expression::Symbol(Symbol::new("hello")),
                 Expression::String(String::from_utf8("world")),
                 Expression::Quote(Quote::default()),
             ]
             .into_iter()
             .collect::<Quote>(),
-            "[⊥ ⊤ 42 3.14 $IoError 'hello' \"world\" []]"
+            "[⊥ ⊤ 42 3.14 'hello' \"world\" []]"
                 .parse::<Quote>()
                 .unwrap()
-        );
-    }
-
-    #[test]
-    fn parse_signal() {
-        assert!(" $StackUnderflow".parse::<Signal>().is_err());
-        assert!("$StackUnderflow ".parse::<Signal>().is_err());
-        assert_eq!(
-            signal::stack_underflow(),
-            "$StackUnderflow".parse().unwrap()
         );
     }
 

@@ -27,6 +27,26 @@ impl Symbol {
         Symbol(Ustr::from(s))
     }
 
+    pub fn divide_by_zero() -> Symbol {
+        Symbol::new("DivideByZero")
+    }
+
+    pub fn stack_underflow() -> Symbol {
+        Symbol::new("StackUnderflow")
+    }
+
+    pub fn out_of_range() -> Symbol {
+        Symbol::new("OutOfRange")
+    }
+
+    pub fn type_error() -> Symbol {
+        Symbol::new("TypeError")
+    }
+
+    pub fn io_error() -> Symbol {
+        Symbol::new("IOError")
+    }
+
     #[inline]
     pub fn as_str(&self) -> &str {
         &self.0

@@ -31,7 +31,7 @@ Locution = @{
 }
 
 Expression = {
-    (Boolean | Decimal | Integer | Quote | Signal | String | Symbol)
+    (Boolean | Decimal | Integer | Quote | String | Symbol)
 }
 
 Boolean = @{
@@ -48,10 +48,6 @@ Integer = @{
 
 Quote = {
     LeftSquareBracket ~ Phrase? ~ RightSquareBracket
-}
-
-Signal = @{
-    "$" ~ ('A'..'Z' | 'a'..'z')+
 }
 
 String = ${

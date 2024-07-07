@@ -15,7 +15,6 @@ use crate::channel::Channel;
 use crate::decimal::Decimal;
 use crate::integer::Integer;
 use crate::quote::Quote;
-use crate::signal::Signal;
 use crate::string::String;
 use crate::symbol::Symbol;
 use crate::verb::Verb;
@@ -27,7 +26,6 @@ pub enum Expression {
     Decimal(Decimal),
     Integer(Integer),
     Quote(Quote),
-    Signal(Signal),
     String(String),
     Symbol(Symbol),
     Verb(Verb),
@@ -71,13 +69,6 @@ impl From<Quote> for Expression {
     }
 }
 
-impl From<Signal> for Expression {
-    #[inline]
-    fn from(value: Signal) -> Self {
-        Self::Signal(value)
-    }
-}
-
 impl From<String> for Expression {
     #[inline]
     fn from(value: String) -> Self {
@@ -109,7 +100,6 @@ impl Evaluate<&mut Evaluator> for Expression {
             Expression::Decimal(e) => e.evaluate(evaluator),
             Expression::Integer(e) => e.evaluate(evaluator),
             Expression::Quote(e) => e.evaluate(evaluator),
-            Expression::Signal(e) => e.evaluate(evaluator),
             Expression::String(e) => e.evaluate(evaluator),
             Expression::Symbol(e) => e.evaluate(evaluator),
             Expression::Verb(e) => e.evaluate(evaluator),
@@ -125,7 +115,6 @@ impl Display for Expression {
             Expression::Decimal(e) => Display::fmt(e, f),
             Expression::Integer(e) => Display::fmt(e, f),
             Expression::Quote(e) => Display::fmt(e, f),
-            Expression::Signal(e) => Display::fmt(e, f),
             Expression::String(e) => Display::fmt(e, f),
             Expression::Symbol(e) => Display::fmt(e, f),
             Expression::Verb(e) => Display::fmt(e, f),
@@ -141,7 +130,6 @@ impl Debug for Expression {
             Expression::Decimal(e) => Debug::fmt(e, f),
             Expression::Integer(e) => Debug::fmt(e, f),
             Expression::Quote(e) => Debug::fmt(e, f),
-            Expression::Signal(e) => Debug::fmt(e, f),
             Expression::String(e) => Debug::fmt(e, f),
             Expression::Symbol(e) => Debug::fmt(e, f),
             Expression::Verb(e) => Debug::fmt(e, f),
