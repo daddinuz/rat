@@ -83,34 +83,6 @@ mod test {
         let mut evaluator = Evaluator::default();
         evaluator
             .evaluate([
-                Expression::Integer(Integer(1)),
-                Expression::Quote(
-                    [
-                        Expression::Integer(Integer(2)),
-                        Expression::Integer(Integer(1)),
-                        Expression::Verb(Verb(builtin::sub)),
-                        Expression::Verb(Verb(builtin::r#yield)),
-                        Expression::Verb(Verb(builtin::sub)),
-                    ]
-                    .into_iter()
-                    .collect(),
-                ),
-                Expression::Verb(Verb(builtin::unquote)),
-                Expression::Verb(Verb(builtin::unquote)),
-            ])
-            .unwrap();
-
-        assert!(matches!(
-            evaluator.stack.as_slice(),
-            &[Expression::Integer(Integer(0))]
-        ));
-    }
-
-    #[test]
-    fn it_works3() {
-        let mut evaluator = Evaluator::default();
-        evaluator
-            .evaluate([
                 Expression::Quote(
                     [
                         Expression::Integer(Integer(1)),
@@ -121,7 +93,7 @@ mod test {
                 ),
                 Expression::Quote([Expression::Integer(Integer(42))].into_iter().collect()),
                 Expression::Signal(signal::stack_underflow()),
-                Expression::Verb(Verb(builtin::catch)),
+                Expression::Verb(Verb(builtin::r#try)),
             ])
             .unwrap();
 

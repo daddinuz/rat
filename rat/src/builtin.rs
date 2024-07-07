@@ -699,19 +699,7 @@ pub fn quote(evaluator: &mut Evaluator) -> Result<(), Effect> {
 
 pub fn unquote(evaluator: &mut Evaluator) -> Result<(), Effect> {
     match evaluator.stack.pop() {
-        Some(Expression::Quote(quote)) => {
-            let mut continuation = quote.into_iter();
-
-            match continuation.try_for_each(|e| evaluator.evaluate(e)) {
-                Err(Effect::Yield) => {
-                    evaluator
-                        .stack
-                        .push(Expression::Quote(continuation.collect()));
-                    Ok(())
-                }
-                flow => flow,
-            }
-        }
+        Some(Expression::Quote(quote)) => evaluator.evaluate(quote),
         Some(expression) => {
             evaluator
                 .stack
@@ -761,7 +749,7 @@ pub fn x(evaluator: &mut Evaluator) -> Result<(), Effect> {
     i(evaluator)
 }
 
-pub fn unary_two(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn unary2(evaluator: &mut Evaluator) -> Result<(), Effect> {
     let stack = &mut evaluator.stack;
     let top = stack.len();
 
@@ -771,7 +759,7 @@ pub fn unary_two(evaluator: &mut Evaluator) -> Result<(), Effect> {
             let input2 = std::mem::replace(input2, Expression::Integer(Integer::ZERO));
 
             stack.truncate(top - 2);
-            evaluator.evaluate(quote.clone())?;
+            evaluator.evaluate(quote.iter().cloned())?;
 
             evaluator.stack.push(input2);
             evaluator.evaluate(quote)
@@ -883,15 +871,11 @@ pub fn if_else(evaluator: &mut Evaluator) -> Result<(), Effect> {
     }
 }
 
-pub fn r#yield(_: &mut Evaluator) -> Result<(), Effect> {
-    Err(Effect::Yield)
-}
-
 pub fn raise(_: &mut Evaluator) -> Result<(), Effect> {
     Err(Effect::Raise)
 }
 
-pub fn catch(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn r#try(evaluator: &mut Evaluator) -> Result<(), Effect> {
     match &evaluator.stack[..] {
         [.., Expression::Quote(_), Expression::Quote(_), _] => {
             let guarded = evaluator.stack.pop();

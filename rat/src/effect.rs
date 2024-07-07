@@ -6,6 +6,5 @@
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Effect {
-    Yield,
     Raise,
 }

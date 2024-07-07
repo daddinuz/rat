@@ -135,7 +135,7 @@ impl Vocabulary {
     }
 }
 
-static PRELUDE: [(&Word, &[Expression]); 69] = [
+static PRELUDE: [(&Word, &[Expression]); 68] = [
     (word_literal("neg"), &[Expression::Verb(Verb(builtin::neg))]),
     (
         word_literal("incr"),
@@ -225,7 +225,7 @@ static PRELUDE: [(&Word, &[Expression]); 69] = [
     (word_literal("dip"), &[Expression::Verb(Verb(builtin::dip))]),
     (
         word_literal("unary2"),
-        &[Expression::Verb(Verb(builtin::unary_two))],
+        &[Expression::Verb(Verb(builtin::unary2))],
     ),
     (word_literal("if"), &[Expression::Verb(Verb(builtin::r#if))]),
     (
@@ -237,16 +237,12 @@ static PRELUDE: [(&Word, &[Expression]); 69] = [
         &[Expression::Verb(Verb(builtin::if_else))],
     ),
     (
-        word_literal("yield"),
-        &[Expression::Verb(Verb(builtin::r#yield))],
-    ),
-    (
         word_literal("raise"),
         &[Expression::Verb(Verb(builtin::raise))],
     ),
     (
-        word_literal("catch"),
-        &[Expression::Verb(Verb(builtin::catch))],
+        word_literal("try"),
+        &[Expression::Verb(Verb(builtin::r#try))],
     ),
     (
         word_literal("first"),
