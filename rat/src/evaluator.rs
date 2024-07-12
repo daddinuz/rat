@@ -4,28 +4,28 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-use crossbeam::channel::{Receiver, Sender};
+use std::sync::Arc;
 
 use crate::effect::Effect;
 use crate::evaluate::Evaluate;
 use crate::expression::Expression;
+use crate::globals::Globals;
 
+#[derive(Default)]
 pub struct Evaluator {
     pub stack: Vec<Expression>,
-    pub channel: Option<(Sender<Expression>, Receiver<Expression>)>,
-}
-
-impl Default for Evaluator {
-    fn default() -> Self {
-        Self::new()
-    }
+    pub globals: Arc<Globals>,
 }
 
 impl Evaluator {
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn with_globals(globals: Arc<Globals>) -> Self {
         Self {
             stack: Vec::new(),
-            channel: None,
+            globals,
         }
     }
 }

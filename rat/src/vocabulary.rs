@@ -135,7 +135,7 @@ impl Vocabulary {
     }
 }
 
-static PRELUDE: [(&Word, &[Expression]); 68] = [
+static PRELUDE: [(&Word, &[Expression]); 67] = [
     (word_literal("neg"), &[Expression::Verb(Verb(builtin::neg))]),
     (
         word_literal("incr"),
@@ -289,20 +289,16 @@ static PRELUDE: [(&Word, &[Expression]); 68] = [
         &[Expression::Verb(Verb(builtin::send))],
     ),
     (
-        word_literal("receive"),
-        &[Expression::Verb(Verb(builtin::receive))],
-    ),
-    (
-        word_literal("produce"),
-        &[Expression::Verb(Verb(builtin::produce))],
-    ),
-    (
-        word_literal("consume"),
-        &[Expression::Verb(Verb(builtin::consume))],
+        word_literal("recv"),
+        &[Expression::Verb(Verb(builtin::recv))],
     ),
     (
         word_literal("spawn"),
         &[Expression::Verb(Verb(builtin::spawn))],
+    ),
+    (
+        word_literal("detach"),
+        &[Expression::Verb(Verb(builtin::detach))],
     ),
     (word_literal("ask"), &[Expression::Verb(Verb(builtin::ask))]),
     (word_literal("say"), &[Expression::Verb(Verb(builtin::say))]),

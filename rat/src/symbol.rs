@@ -13,7 +13,7 @@ use crate::expression::Expression;
 
 use std::fmt::{Debug, Display};
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(Ustr);
 
 impl FromIterator<char> for Symbol {

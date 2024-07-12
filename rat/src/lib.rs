@@ -10,9 +10,9 @@ extern crate pest_derive;
 pub(crate) mod codegen;
 
 pub mod boolean;
-pub mod channel;
 pub mod decimal;
 pub mod integer;
+pub mod process;
 pub mod quote;
 pub mod string;
 pub mod symbol;
@@ -24,6 +24,7 @@ pub mod builtin;
 pub mod effect;
 pub mod evaluate;
 pub mod evaluator;
+pub mod globals;
 pub mod locution;
 pub mod parser;
 pub mod vocabulary;
@@ -113,26 +114,29 @@ mod test {
                         Expression::Integer(Integer(8)),
                         Expression::Integer(Integer(12)),
                         Expression::Verb(Verb(builtin::add)),
-                        Expression::Verb(Verb(builtin::produce)),
+                        Expression::Symbol(Symbol::new("out")),
+                        Expression::Verb(Verb(builtin::send)),
                     ]
                     .into_iter()
                     .collect(),
                 ),
-                Expression::Verb(Verb(builtin::spawn)),
+                Expression::Verb(Verb(builtin::detach)),
                 Expression::Quote(
                     [
                         Expression::Integer(Integer(10)),
                         Expression::Integer(Integer(12)),
                         Expression::Verb(Verb(builtin::add)),
-                        Expression::Verb(Verb(builtin::produce)),
+                        Expression::Symbol(Symbol::new("out")),
+                        Expression::Verb(Verb(builtin::send)),
                     ]
                     .into_iter()
                     .collect(),
                 ),
-                Expression::Verb(Verb(builtin::spawn)),
-                Expression::Verb(Verb(builtin::receive)),
-                Expression::Verb(Verb(builtin::swap)),
-                Expression::Verb(Verb(builtin::receive)),
+                Expression::Verb(Verb(builtin::detach)),
+                Expression::Symbol(Symbol::new("out")),
+                Expression::Verb(Verb(builtin::recv)),
+                Expression::Symbol(Symbol::new("out")),
+                Expression::Verb(Verb(builtin::recv)),
                 Expression::Verb(Verb(builtin::add)),
             ])
             .unwrap();

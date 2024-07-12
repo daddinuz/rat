@@ -13,9 +13,9 @@ use crate::evaluator::Evaluator;
 use crate::expression::Expression;
 
 use crate::boolean::Boolean;
-use crate::channel::Channel;
 use crate::decimal::Decimal;
 use crate::integer::Integer;
+use crate::process::Process;
 use crate::quote::Quote;
 use crate::string::String;
 use crate::symbol::Symbol;
@@ -1155,90 +1155,52 @@ pub fn dup(evaluator: &mut Evaluator) -> Result<(), Effect> {
     Ok(())
 }
 
-// TODO: review
 pub fn send(evaluator: &mut Evaluator) -> Result<(), Effect> {
-    let stack = &mut evaluator.stack;
+    match &evaluator.stack[..] {
+        [.., expression, Expression::Symbol(topic)] => {
+            let expression = expression.clone();
 
-    match stack[..] {
-        [.., Expression::Channel(ref channel), ref expression] => {
-            if channel.send(expression.clone()).is_err() {
-                stack.push(Symbol::io_error().into());
+            if evaluator.globals.broker.send(*topic, expression).is_err() {
+                evaluator.stack.push(Symbol::io_error().into());
                 return Err(Effect::Raise);
             }
 
-            let top = stack.len();
-            stack.truncate(top - 2);
+            let top = evaluator.stack.len();
+            evaluator.stack.truncate(top - 2);
             Ok(())
         }
         [.., _, _] => {
-            stack.push(Symbol::type_error().into());
+            evaluator.stack.push(Symbol::type_error().into());
             Err(Effect::Raise)
         }
         _ => {
-            stack.push(Symbol::stack_underflow().into());
+            evaluator.stack.push(Symbol::stack_underflow().into());
             Err(Effect::Raise)
         }
     }
 }
 
-pub fn receive(evaluator: &mut Evaluator) -> Result<(), Effect> {
-    let stack = &mut evaluator.stack;
-
-    match stack[..] {
-        [.., Expression::Channel(ref channel)] => match channel.recv() {
+pub fn recv(evaluator: &mut Evaluator) -> Result<(), Effect> {
+    match &evaluator.stack[..] {
+        [.., Expression::Symbol(topic)] => match evaluator.globals.broker.recv(*topic) {
             Ok(expression) => {
-                *stack.last_mut().unwrap() = expression;
+                *evaluator.stack.last_mut().unwrap() = expression;
                 Ok(())
             }
             Err(_) => {
-                stack.push(Symbol::io_error().into());
+                evaluator.stack.push(Symbol::io_error().into());
                 Err(Effect::Raise)
             }
         },
         [.., _] => {
-            stack.push(Symbol::type_error().into());
+            evaluator.stack.push(Symbol::type_error().into());
             Err(Effect::Raise)
         }
         _ => {
-            stack.push(Symbol::stack_underflow().into());
+            evaluator.stack.push(Symbol::stack_underflow().into());
             Err(Effect::Raise)
         }
     }
-}
-
-pub fn produce(evaluator: &mut Evaluator) -> Result<(), Effect> {
-    let stack = &mut evaluator.stack;
-
-    match stack.pop() {
-        Some(expression) => {
-            if let Some(sender) = evaluator.channel.as_ref().map(|(sender, _)| sender) {
-                if sender.send(expression).is_err() {
-                    stack.push(Symbol::io_error().into());
-                    return Err(Effect::Raise);
-                }
-            }
-
-            Ok(())
-        }
-        None => {
-            stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
-        }
-    }
-}
-
-pub fn consume(evaluator: &mut Evaluator) -> Result<(), Effect> {
-    let stack = &mut evaluator.stack;
-
-    if let Some(receiver) = evaluator.channel.as_ref().map(|(_, receiver)| receiver) {
-        if let Ok(expression) = receiver.recv() {
-            stack.push(expression);
-            return Ok(());
-        }
-    }
-
-    stack.push(Symbol::io_error().into());
-    Err(Effect::Raise)
 }
 
 pub fn spawn(evaluator: &mut Evaluator) -> Result<(), Effect> {
@@ -1249,8 +1211,35 @@ pub fn spawn(evaluator: &mut Evaluator) -> Result<(), Effect> {
             let quote = std::mem::take(quote);
             stack.pop().unwrap();
 
-            let channel = Channel::spawn(quote);
-            stack.push(Expression::Channel(channel));
+            let process = Process::spawn(evaluator.globals.clone(), quote);
+            stack.push(Expression::Process(process));
+
+            Ok(())
+        }
+        [.., _] => {
+            evaluator.stack.push(Symbol::type_error().into());
+            Err(Effect::Raise)
+        }
+        _ => {
+            evaluator.stack.push(Symbol::stack_underflow().into());
+            Err(Effect::Raise)
+        }
+    }
+}
+
+pub fn detach(evaluator: &mut Evaluator) -> Result<(), Effect> {
+    let stack = &mut evaluator.stack;
+
+    match &mut stack[..] {
+        [.., Expression::Quote(quote)] => {
+            let quote = std::mem::take(quote);
+            stack.pop().unwrap();
+
+            let globals = evaluator.globals.clone();
+            std::thread::spawn(move || {
+                let mut evaluator = Evaluator::with_globals(globals);
+                evaluator.evaluate(quote)
+            });
 
             Ok(())
         }

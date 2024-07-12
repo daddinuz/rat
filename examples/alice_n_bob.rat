@@ -1,7 +1,3 @@
-: std @ rat\std ;
-
-: alice ← ["alice" produce consume receive say] spawn ;
-: bob ← ["bob" produce consume receive say] spawn ;
-
-alice bob std\dup2 swap send send
+["alice" 'bob' send 'alice' recv say] spawn
+["bob" 'alice' send 'bob' recv say] spawn
 "press [enter] to continue\n" ask
