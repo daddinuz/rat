@@ -30,11 +30,11 @@ impl From<Boolean> for bool {
     }
 }
 
-impl Evaluate<&mut Evaluator> for Boolean {
+impl Evaluate<Boolean> for &mut Evaluator {
     type Output = Result<(), Effect>;
 
-    fn evaluate(self, evaluator: &mut Evaluator) -> Self::Output {
-        evaluator.stack.push(Expression::Boolean(self));
+    fn evaluate(self, value: Boolean) -> Self::Output {
+        self.stack.push(Expression::Boolean(value));
         Ok(())
     }
 }

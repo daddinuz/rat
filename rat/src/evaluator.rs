@@ -30,21 +30,13 @@ impl Evaluator {
     }
 }
 
-impl<P> Evaluate<P> for &mut Evaluator
+impl<I> Evaluate<I> for &mut Evaluator
 where
-    P: IntoIterator<Item = Expression>,
+    I: Iterator<Item = Expression>,
 {
     type Output = Result<(), Effect>;
 
-    fn evaluate(self, program: P) -> Self::Output {
-        program.into_iter().try_for_each(|e| e.evaluate(self))
-    }
-}
-
-impl Evaluate<Expression> for &mut Evaluator {
-    type Output = Result<(), Effect>;
-
-    fn evaluate(self, expression: Expression) -> Self::Output {
-        expression.evaluate(self)
+    fn evaluate(self, mut expressions: I) -> Self::Output {
+        expressions.try_for_each(|e| self.evaluate(e))
     }
 }

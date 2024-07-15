@@ -135,7 +135,7 @@ impl Vocabulary {
     }
 }
 
-static PRELUDE: [(&Word, &[Expression]); 67] = [
+static PRELUDE: [(&Word, &[Expression]); 68] = [
     (word_literal("neg"), &[Expression::Verb(Verb(builtin::neg))]),
     (
         word_literal("incr"),
@@ -313,6 +313,10 @@ static PRELUDE: [(&Word, &[Expression]); 67] = [
     (
         word_literal("binrec"),
         &[Expression::Verb(Verb(builtin::binrec))],
+    ),
+    (
+        word_literal("parbinrec"),
+        &[Expression::Verb(Verb(builtin::parbinrec))],
     ),
 ];
 

@@ -76,11 +76,11 @@ impl Decimal {
     }
 }
 
-impl Evaluate<&mut Evaluator> for Decimal {
+impl Evaluate<Decimal> for &mut Evaluator {
     type Output = Result<(), Effect>;
 
-    fn evaluate(self, evaluator: &mut Evaluator) -> Self::Output {
-        evaluator.stack.push(Expression::Decimal(self));
+    fn evaluate(self, value: Decimal) -> Self::Output {
+        self.stack.push(Expression::Decimal(value));
         Ok(())
     }
 }

@@ -68,11 +68,11 @@ impl String {
     }
 }
 
-impl Evaluate<&mut Evaluator> for String {
+impl Evaluate<String> for &mut Evaluator {
     type Output = Result<(), Effect>;
 
-    fn evaluate(self, evaluator: &mut Evaluator) -> Self::Output {
-        evaluator.stack.push(Expression::String(self));
+    fn evaluate(self, value: String) -> Self::Output {
+        self.stack.push(Expression::String(value));
         Ok(())
     }
 }

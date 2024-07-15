@@ -35,11 +35,11 @@ impl Process {
     }
 }
 
-impl Evaluate<&mut Evaluator> for Process {
+impl Evaluate<Process> for &mut Evaluator {
     type Output = Result<(), Effect>;
 
-    fn evaluate(self, evaluator: &mut Evaluator) -> Self::Output {
-        evaluator.stack.push(Expression::Process(self));
+    fn evaluate(self, value: Process) -> Self::Output {
+        self.stack.push(Expression::Process(value));
         Ok(())
     }
 }

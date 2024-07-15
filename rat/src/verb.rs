@@ -13,12 +13,11 @@ use crate::evaluator::Evaluator;
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Verb(pub fn(&mut Evaluator) -> Result<(), Effect>);
 
-impl Evaluate<&mut Evaluator> for Verb {
+impl Evaluate<Verb> for &mut Evaluator {
     type Output = Result<(), Effect>;
 
-    fn evaluate(self, evaluator: &mut Evaluator) -> Self::Output {
-        let Self(verb) = self;
-        verb(evaluator)
+    fn evaluate(self, Verb(verb): Verb) -> Self::Output {
+        verb(self)
     }
 }
 

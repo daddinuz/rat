@@ -76,11 +76,11 @@ impl Integer {
     }
 }
 
-impl Evaluate<&mut Evaluator> for Integer {
+impl Evaluate<Integer> for &mut Evaluator {
     type Output = Result<(), Effect>;
 
-    fn evaluate(self, evaluator: &mut Evaluator) -> Self::Output {
-        evaluator.stack.push(Expression::Integer(self));
+    fn evaluate(self, value: Integer) -> Self::Output {
+        self.stack.push(Expression::Integer(value));
         Ok(())
     }
 }

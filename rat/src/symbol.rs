@@ -53,11 +53,11 @@ impl Symbol {
     }
 }
 
-impl Evaluate<&mut Evaluator> for Symbol {
+impl Evaluate<Symbol> for &mut Evaluator {
     type Output = Result<(), Effect>;
 
-    fn evaluate(self, evaluator: &mut Evaluator) -> Self::Output {
-        evaluator.stack.push(Expression::Symbol(self));
+    fn evaluate(self, value: Symbol) -> Self::Output {
+        self.stack.push(Expression::Symbol(value));
         Ok(())
     }
 }

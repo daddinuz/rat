@@ -93,11 +93,11 @@ impl Quote {
     }
 }
 
-impl Evaluate<&mut Evaluator> for Quote {
+impl Evaluate<Quote> for &mut Evaluator {
     type Output = Result<(), Effect>;
 
-    fn evaluate(self, evaluator: &mut Evaluator) -> Self::Output {
-        evaluator.stack.push(Expression::Quote(self));
+    fn evaluate(self, value: Quote) -> Self::Output {
+        self.stack.push(Expression::Quote(value));
         Ok(())
     }
 }

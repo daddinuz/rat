@@ -11,7 +11,6 @@ use std::fs::{File, OpenOptions};
 use std::io::{ErrorKind, Read};
 use std::path::{Path, PathBuf};
 
-use rat::quote::DisplayAdapter;
 use rustyline::error::ReadlineError;
 use rustyline::highlight::MatchingBracketHighlighter;
 use rustyline::validate::MatchingBracketValidator;
@@ -22,6 +21,7 @@ use rustyline_derive::{Completer, Highlighter, Hinter, Validator};
 use rat::evaluate::Evaluate;
 use rat::evaluator::Evaluator;
 use rat::parser::{Origin, Parser};
+use rat::quote::DisplayAdapter;
 
 use error::{CliError, Consume, Report};
 
@@ -161,7 +161,7 @@ fn interpret(
     evaluator: &mut Evaluator,
 ) -> Result<(), CliError> {
     let program = parser.parse(origin, source)?;
-    evaluator.evaluate(program).map_err(|effect| {
+    evaluator.evaluate(program.into_iter()).map_err(|effect| {
         format!(
             "unahandled effect: {effect:?}\nstack (top rightmost): {:?}",
             DisplayAdapter::new(&evaluator.stack)

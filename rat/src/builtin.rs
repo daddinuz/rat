@@ -698,7 +698,7 @@ pub fn quote(evaluator: &mut Evaluator) -> Result<(), Effect> {
 
 pub fn unquote(evaluator: &mut Evaluator) -> Result<(), Effect> {
     match evaluator.stack.pop() {
-        Some(Expression::Quote(quote)) => evaluator.evaluate(quote),
+        Some(Expression::Quote(quote)) => evaluator.evaluate(quote.iter().cloned()),
         Some(expression) => {
             evaluator
                 .stack
@@ -761,7 +761,7 @@ pub fn unary2(evaluator: &mut Evaluator) -> Result<(), Effect> {
             evaluator.evaluate(quote.iter().cloned())?;
 
             evaluator.stack.push(input2);
-            evaluator.evaluate(quote)
+            evaluator.evaluate(quote.iter().cloned())
         }
         [.., _, _, _] => {
             stack.push(Symbol::type_error().into());
@@ -803,7 +803,7 @@ pub fn r#if(evaluator: &mut Evaluator) -> Result<(), Effect> {
                 let quote = std::mem::take(truthy);
                 let top = stack.len();
                 stack.truncate(top - 2);
-                return evaluator.evaluate(quote);
+                return evaluator.evaluate(quote.iter().cloned());
             }
 
             let top = stack.len();
@@ -830,7 +830,7 @@ pub fn r#else(evaluator: &mut Evaluator) -> Result<(), Effect> {
                 let quote = std::mem::take(falsy);
                 let top = stack.len();
                 stack.truncate(top - 2);
-                return evaluator.evaluate(quote);
+                return evaluator.evaluate(quote.iter().cloned());
             }
 
             let top = stack.len();
@@ -857,7 +857,7 @@ pub fn if_else(evaluator: &mut Evaluator) -> Result<(), Effect> {
             let quote = std::mem::take(if condition { truthy } else { falsy });
             let top = stack.len();
             stack.truncate(top - 3);
-            evaluator.evaluate(quote)
+            evaluator.evaluate(quote.iter().cloned())
         }
         [.., _, _, _] => {
             evaluator.stack.push(Symbol::type_error().into());
@@ -1238,7 +1238,7 @@ pub fn detach(evaluator: &mut Evaluator) -> Result<(), Effect> {
             let globals = evaluator.globals.clone();
             std::thread::spawn(move || {
                 let mut evaluator = Evaluator::with_globals(globals);
-                evaluator.evaluate(quote)
+                evaluator.evaluate(quote.iter().cloned())
             });
 
             Ok(())
@@ -1335,17 +1335,17 @@ pub fn linrec(evaluator: &mut Evaluator) -> Result<(), Effect> {
     let stack = &mut evaluator.stack;
 
     match &mut stack[..] {
-        [.., Expression::Quote(check), Expression::Quote(leave), Expression::Quote(split), Expression::Quote(merge)] =>
+        [.., Expression::Quote(check), Expression::Quote(leave), Expression::Quote(shard), Expression::Quote(merge)] =>
         {
             let merge = std::mem::take(merge);
-            let split = std::mem::take(split);
+            let shard = std::mem::take(shard);
             let leave = std::mem::take(leave);
             let check = std::mem::take(check);
 
             let top = stack.len();
             stack.truncate(top - 4);
 
-            linrec_aux(evaluator, &check, &leave, &split, &merge)
+            linrec_aux(evaluator, &check, &leave, &shard, &merge)
         }
         [.., _, _, _, _] => {
             stack.push(Symbol::type_error().into());
@@ -1362,25 +1362,23 @@ fn linrec_aux(
     evaluator: &mut Evaluator,
     check: &Quote,
     leave: &Quote,
-    split: &Quote,
+    shard: &Quote,
     merge: &Quote,
 ) -> Result<(), Effect> {
     evaluator.evaluate(check.iter().cloned())?;
 
     match evaluator.stack.pop() {
-        Some(Expression::Boolean(Boolean(value))) => {
-            if value {
-                evaluator.evaluate(leave.iter().cloned())
-            } else {
-                evaluator.evaluate(split.iter().cloned())?;
-                linrec_aux(evaluator, check, leave, split, merge)?;
-                evaluator.evaluate(merge.iter().cloned())
-            }
+        Some(Expression::Boolean(Boolean(false))) => {
+            evaluator.evaluate(shard.iter().cloned())?;
+            linrec_aux(evaluator, check, leave, shard, merge)?;
+            evaluator.evaluate(merge.iter().cloned())
         }
-        Some(value) => {
+        Some(Expression::Boolean(Boolean(true))) => evaluator.evaluate(leave.iter().cloned()),
+        Some(expression) => {
             evaluator
                 .stack
-                .extend_from_slice(&[value, Symbol::type_error().into()]);
+                .extend_from_slice(&[expression, Symbol::type_error().into()]);
+
             Err(Effect::Raise)
         }
         None => {
@@ -1394,17 +1392,17 @@ pub fn binrec(evaluator: &mut Evaluator) -> Result<(), Effect> {
     let stack = &mut evaluator.stack;
 
     match &mut stack[..] {
-        [.., Expression::Quote(check), Expression::Quote(leave), Expression::Quote(split), Expression::Quote(merge)] =>
+        [.., Expression::Quote(check), Expression::Quote(leave), Expression::Quote(shard), Expression::Quote(merge)] =>
         {
             let merge = std::mem::take(merge);
-            let split = std::mem::take(split);
+            let shard = std::mem::take(shard);
             let leave = std::mem::take(leave);
             let check = std::mem::take(check);
 
             let top = stack.len();
             stack.truncate(top - 4);
 
-            binrec_aux(evaluator, &check, &leave, &split, &merge)
+            binrec_aux(evaluator, &check, &leave, &shard, &merge)
         }
         [.., _, _, _, _] => {
             stack.push(Symbol::type_error().into());
@@ -1421,21 +1419,109 @@ fn binrec_aux(
     evaluator: &mut Evaluator,
     check: &Quote,
     leave: &Quote,
-    split: &Quote,
+    shard: &Quote,
     merge: &Quote,
 ) -> Result<(), Effect> {
     evaluator.evaluate(check.iter().cloned())?;
 
     match evaluator.stack.pop() {
         Some(Expression::Boolean(Boolean(false))) => {
-            evaluator.evaluate(split.iter().cloned())?;
+            evaluator.evaluate(shard.iter().cloned())?;
 
-            let value = evaluator.stack.pop().unwrap();
-            binrec_aux(evaluator, check, leave, split, merge)?;
+            let expression = evaluator.stack.pop().unwrap();
+            binrec_aux(evaluator, check, leave, shard, merge)?;
 
-            evaluator.stack.push(value);
-            binrec_aux(evaluator, check, leave, split, merge)?;
+            evaluator.stack.push(expression);
+            binrec_aux(evaluator, check, leave, shard, merge)?;
 
+            evaluator.evaluate(merge.iter().cloned())
+        }
+        Some(Expression::Boolean(Boolean(true))) => evaluator.evaluate(leave.iter().cloned()),
+        Some(expression) => {
+            evaluator
+                .stack
+                .extend_from_slice(&[expression, Symbol::type_error().into()]);
+
+            Err(Effect::Raise)
+        }
+        None => {
+            evaluator.stack.push(Symbol::stack_underflow().into());
+            Err(Effect::Raise)
+        }
+    }
+}
+
+pub fn parbinrec(evaluator: &mut Evaluator) -> Result<(), Effect> {
+    let stack = &mut evaluator.stack;
+
+    match &mut stack[..] {
+        [.., Expression::Quote(check), Expression::Quote(leave), Expression::Quote(shard), Expression::Quote(merge)] =>
+        {
+            let merge = std::mem::take(merge);
+            let shard = std::mem::take(shard);
+            let leave = std::mem::take(leave);
+            let check = std::mem::take(check);
+
+            let top = stack.len();
+            stack.truncate(top - 4);
+
+            parbinrec_aux(evaluator, &check, &leave, &shard, &merge)
+        }
+        [.., _, _, _, _] => {
+            stack.push(Symbol::type_error().into());
+            Err(Effect::Raise)
+        }
+        _ => {
+            stack.push(Symbol::stack_underflow().into());
+            Err(Effect::Raise)
+        }
+    }
+}
+
+fn parbinrec_aux(
+    evaluator: &mut Evaluator,
+    check: &Quote,
+    leave: &Quote,
+    shard: &Quote,
+    merge: &Quote,
+) -> Result<(), Effect> {
+    evaluator.evaluate(check.iter().cloned())?;
+
+    match evaluator.stack.pop() {
+        Some(Expression::Boolean(Boolean(false))) => {
+            evaluator.evaluate(shard.iter().cloned())?;
+
+            let [expression1, expression2] = [
+                evaluator.stack.pop().unwrap(),
+                evaluator.stack.pop().unwrap(),
+            ];
+
+            let [result1, result2] = std::thread::scope(|s| {
+                let globals = evaluator.globals.clone();
+                let handle1 = s.spawn(|| {
+                    let mut evaluator = Evaluator {
+                        stack: vec![expression1],
+                        globals,
+                    };
+                    parbinrec_aux(&mut evaluator, check, leave, shard, merge)?;
+                    Ok(evaluator.stack)
+                });
+
+                let globals = evaluator.globals.clone();
+                let handle2 = s.spawn(|| {
+                    let mut evaluator = Evaluator {
+                        stack: vec![expression2],
+                        globals,
+                    };
+                    parbinrec_aux(&mut evaluator, check, leave, shard, merge)?;
+                    Ok(evaluator.stack)
+                });
+
+                [handle1.join().unwrap(), handle2.join().unwrap()]
+            });
+
+            evaluator.stack.extend(result1?);
+            evaluator.stack.extend(result2?);
             evaluator.evaluate(merge.iter().cloned())
         }
         Some(Expression::Boolean(Boolean(true))) => evaluator.evaluate(leave.iter().cloned()),
