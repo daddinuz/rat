@@ -112,13 +112,33 @@ impl Deref for Quote {
 
 impl Display for Quote {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        DisplayAdapter::new(self.as_slice()).display().fmt(f)
+        match self.as_slice() {
+            [] => write!(f, "[]"),
+            [v] => write!(f, "[{v}]"),
+            [v, rest @ ..] => {
+                write!(f, "[{v}")?;
+                for v in rest {
+                    write!(f, " {v}")?;
+                }
+                write!(f, "]")
+            }
+        }
     }
 }
 
 impl Debug for Quote {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        DisplayAdapter::new(self.as_slice()).debug().fmt(f)
+        match self.as_slice() {
+            [] => write!(f, "[]"),
+            [v] => write!(f, "[{v:?}]"),
+            [v, rest @ ..] => {
+                write!(f, "[{v:?}")?;
+                for v in rest {
+                    write!(f, " {v:?}")?;
+                }
+                write!(f, "]")
+            }
+        }
     }
 }
 
@@ -255,55 +275,5 @@ impl IntoIterator for Quote {
                 .unwrap_or_default()
                 .into_iter(),
         )
-    }
-}
-
-pub struct DisplayAdapter<'a> {
-    slice: &'a [Expression],
-}
-
-impl<'a> DisplayAdapter<'a> {
-    pub const fn new(slice: &'a [Expression]) -> Self {
-        Self { slice }
-    }
-
-    pub fn display(&self) -> impl Display + '_ {
-        self
-    }
-
-    pub fn debug(&self) -> impl Debug + '_ {
-        self
-    }
-}
-
-impl<'a> Display for DisplayAdapter<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.slice {
-            [] => write!(f, "[]"),
-            [v] => write!(f, "[{v}]"),
-            [v, rest @ ..] => {
-                write!(f, "[{v}")?;
-                for v in rest {
-                    write!(f, " {v}")?;
-                }
-                write!(f, "]")
-            }
-        }
-    }
-}
-
-impl<'a> Debug for DisplayAdapter<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.slice {
-            [] => write!(f, "[]"),
-            [v] => write!(f, "[{v:?}]"),
-            [v, rest @ ..] => {
-                write!(f, "[{v:?}")?;
-                for v in rest {
-                    write!(f, " {v:?}")?;
-                }
-                write!(f, "]")
-            }
-        }
     }
 }

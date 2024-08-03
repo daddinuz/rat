@@ -7,6 +7,7 @@
 mod error;
 
 use std::env;
+use std::fmt::Write;
 use std::fs::{File, OpenOptions};
 use std::io::{ErrorKind, Read};
 use std::path::{Path, PathBuf};
@@ -21,7 +22,6 @@ use rustyline_derive::{Completer, Highlighter, Hinter, Validator};
 use rat::evaluate::Evaluate;
 use rat::evaluator::Evaluator;
 use rat::parser::{Origin, Parser};
-use rat::quote::DisplayAdapter;
 
 use error::{CliError, Consume, Report};
 
@@ -116,7 +116,7 @@ fn repl(
 
     if show_greeting {
         println!(
-            "{}\nRat {} CLI {}\nEnter Ctrl+D to exit.\nThis software is licensed under MPL-2.0 terms, visit https://www.mozilla.org/MPL/2.0/ for more information.\n",
+            "{}{NEWLINE}Rat {} CLI {}{NEWLINE}Enter Ctrl+D to exit.{NEWLINE}This software is licensed under MPL-2.0 terms, visit https://www.mozilla.org/MPL/2.0/ for more information.{NEWLINE}",
             REPL_GREET,
             rat::VERSION,
             VERSION,
@@ -161,10 +161,14 @@ fn interpret(
     evaluator: &mut Evaluator,
 ) -> Result<(), CliError> {
     let program = parser.parse(origin, source)?;
+
     evaluator.evaluate(program.into_iter()).map_err(|effect| {
-        format!(
-            "unahandled effect: {effect:?}\nstack (top rightmost): {:?}",
-            DisplayAdapter::new(&evaluator.stack)
+        evaluator.stack.iter().fold(
+            format!("unhandled effect: {effect:?}{NEWLINE}stack (top rightmost):"),
+            |mut acc, exp| {
+                let _ = write!(acc, " {exp:?}");
+                acc
+            },
         )
     })?;
 
@@ -595,3 +599,9 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   This Source Code Form is "Incompatible With Secondary Licenses", as
   defined by the Mozilla Public License, v. 2.0.
 "###;
+
+#[cfg(windows)]
+const NEWLINE: &str = "\r\n";
+
+#[cfg(not(windows))]
+const NEWLINE: &str = "\n";
