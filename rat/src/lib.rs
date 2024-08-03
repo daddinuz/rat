@@ -14,6 +14,7 @@ pub mod decimal;
 pub mod integer;
 pub mod process;
 pub mod quote;
+pub mod record;
 pub mod string;
 pub mod symbol;
 pub mod verb;
