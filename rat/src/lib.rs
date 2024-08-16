@@ -12,7 +12,6 @@ pub(crate) mod codegen;
 pub mod boolean;
 pub mod decimal;
 pub mod integer;
-pub mod process;
 pub mod quote;
 pub mod record;
 pub mod string;
@@ -25,7 +24,6 @@ pub mod builtin;
 pub mod effect;
 pub mod evaluate;
 pub mod evaluator;
-pub mod globals;
 pub mod locution;
 pub mod parser;
 pub mod vocabulary;
@@ -113,53 +111,7 @@ mod test {
     }
 
     #[test]
-    fn it_works4() {
-        let mut evaluator = Evaluator::default();
-        evaluator
-            .evaluate(
-                [
-                    Expression::Quote(
-                        [
-                            Expression::Integer(Integer(8)),
-                            Expression::Integer(Integer(12)),
-                            Expression::Verb(Verb(builtin::add)),
-                            Expression::Symbol(Symbol::new("out")),
-                            Expression::Verb(Verb(builtin::send)),
-                        ]
-                        .into_iter()
-                        .collect(),
-                    ),
-                    Expression::Verb(Verb(builtin::detach)),
-                    Expression::Quote(
-                        [
-                            Expression::Integer(Integer(10)),
-                            Expression::Integer(Integer(12)),
-                            Expression::Verb(Verb(builtin::add)),
-                            Expression::Symbol(Symbol::new("out")),
-                            Expression::Verb(Verb(builtin::send)),
-                        ]
-                        .into_iter()
-                        .collect(),
-                    ),
-                    Expression::Verb(Verb(builtin::detach)),
-                    Expression::Symbol(Symbol::new("out")),
-                    Expression::Verb(Verb(builtin::recv)),
-                    Expression::Symbol(Symbol::new("out")),
-                    Expression::Verb(Verb(builtin::recv)),
-                    Expression::Verb(Verb(builtin::add)),
-                ]
-                .into_iter(),
-            )
-            .unwrap();
-
-        assert!(matches!(
-            evaluator.stack.as_slice(),
-            &[Expression::Integer(Integer(42))]
-        ));
-    }
-
-    #[test]
-    fn it_works5() {
+    fn it_works3() {
         let mut evaluator = Evaluator::default();
         evaluator
             .evaluate(

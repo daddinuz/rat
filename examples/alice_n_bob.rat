@@ -1,3 +1,0 @@
-["alice" 'bob' send 'alice' recv say] spawn
-["bob" 'alice' send 'bob' recv say] spawn
-"press [enter] to continue\n" ask

@@ -135,7 +135,7 @@ impl Vocabulary {
     }
 }
 
-static PRELUDE: [(&Word, &[Expression]); 68] = [
+static PRELUDE: [(&Word, &[Expression]); 63] = [
     (word_literal("neg"), &[Expression::Verb(Verb(builtin::neg))]),
     (
         word_literal("incr"),
@@ -284,22 +284,6 @@ static PRELUDE: [(&Word, &[Expression]); 68] = [
     ),
     (word_literal("pop"), &[Expression::Verb(Verb(builtin::pop))]),
     (word_literal("dup"), &[Expression::Verb(Verb(builtin::dup))]),
-    (
-        word_literal("send"),
-        &[Expression::Verb(Verb(builtin::send))],
-    ),
-    (
-        word_literal("recv"),
-        &[Expression::Verb(Verb(builtin::recv))],
-    ),
-    (
-        word_literal("spawn"),
-        &[Expression::Verb(Verb(builtin::spawn))],
-    ),
-    (
-        word_literal("detach"),
-        &[Expression::Verb(Verb(builtin::detach))],
-    ),
     (word_literal("ask"), &[Expression::Verb(Verb(builtin::ask))]),
     (word_literal("say"), &[Expression::Verb(Verb(builtin::say))]),
     (
@@ -313,10 +297,6 @@ static PRELUDE: [(&Word, &[Expression]); 68] = [
     (
         word_literal("binrec"),
         &[Expression::Verb(Verb(builtin::binrec))],
-    ),
-    (
-        word_literal("parbinrec"),
-        &[Expression::Verb(Verb(builtin::parbinrec))],
     ),
 ];
 

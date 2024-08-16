@@ -15,7 +15,6 @@ use crate::expression::Expression;
 use crate::boolean::Boolean;
 use crate::decimal::Decimal;
 use crate::integer::Integer;
-use crate::process::Process;
 use crate::quote::Quote;
 use crate::string::String;
 use crate::symbol::Symbol;
@@ -1155,105 +1154,6 @@ pub fn dup(evaluator: &mut Evaluator) -> Result<(), Effect> {
     Ok(())
 }
 
-pub fn send(evaluator: &mut Evaluator) -> Result<(), Effect> {
-    match &evaluator.stack[..] {
-        [.., expression, Expression::Symbol(topic)] => {
-            let expression = expression.clone();
-
-            if evaluator.globals.broker.send(*topic, expression).is_err() {
-                evaluator.stack.push(Symbol::io_error().into());
-                return Err(Effect::Raise);
-            }
-
-            let top = evaluator.stack.len();
-            evaluator.stack.truncate(top - 2);
-            Ok(())
-        }
-        [.., _, _] => {
-            evaluator.stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
-        }
-        _ => {
-            evaluator.stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
-        }
-    }
-}
-
-pub fn recv(evaluator: &mut Evaluator) -> Result<(), Effect> {
-    match &evaluator.stack[..] {
-        [.., Expression::Symbol(topic)] => match evaluator.globals.broker.recv(*topic) {
-            Ok(expression) => {
-                *evaluator.stack.last_mut().unwrap() = expression;
-                Ok(())
-            }
-            Err(_) => {
-                evaluator.stack.push(Symbol::io_error().into());
-                Err(Effect::Raise)
-            }
-        },
-        [.., _] => {
-            evaluator.stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
-        }
-        _ => {
-            evaluator.stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
-        }
-    }
-}
-
-pub fn spawn(evaluator: &mut Evaluator) -> Result<(), Effect> {
-    let stack = &mut evaluator.stack;
-
-    match &mut stack[..] {
-        [.., Expression::Quote(quote)] => {
-            let quote = std::mem::take(quote);
-            stack.pop().unwrap();
-
-            let process = Process::spawn(evaluator.globals.clone(), quote);
-            stack.push(Expression::Process(process));
-
-            Ok(())
-        }
-        [.., _] => {
-            evaluator.stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
-        }
-        _ => {
-            evaluator.stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
-        }
-    }
-}
-
-pub fn detach(evaluator: &mut Evaluator) -> Result<(), Effect> {
-    let stack = &mut evaluator.stack;
-
-    match &mut stack[..] {
-        [.., Expression::Quote(quote)] => {
-            let quote = std::mem::take(quote);
-            stack.pop().unwrap();
-
-            let globals = evaluator.globals.clone();
-            std::thread::spawn(move || {
-                let mut evaluator = Evaluator::with_globals(globals);
-                evaluator.evaluate(quote.iter().cloned())
-            });
-
-            Ok(())
-        }
-        [.., _] => {
-            evaluator.stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
-        }
-        _ => {
-            evaluator.stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
-        }
-    }
-}
-
 pub fn ask(evaluator: &mut Evaluator) -> Result<(), Effect> {
     let stack = &mut evaluator.stack;
 
@@ -1434,94 +1334,6 @@ fn binrec_aux(
             evaluator.stack.push(expression);
             binrec_aux(evaluator, check, leave, shard, merge)?;
 
-            evaluator.evaluate(merge.iter().cloned())
-        }
-        Some(Expression::Boolean(Boolean(true))) => evaluator.evaluate(leave.iter().cloned()),
-        Some(expression) => {
-            evaluator
-                .stack
-                .extend_from_slice(&[expression, Symbol::type_error().into()]);
-
-            Err(Effect::Raise)
-        }
-        None => {
-            evaluator.stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
-        }
-    }
-}
-
-pub fn parbinrec(evaluator: &mut Evaluator) -> Result<(), Effect> {
-    let stack = &mut evaluator.stack;
-
-    match &mut stack[..] {
-        [.., Expression::Quote(check), Expression::Quote(leave), Expression::Quote(shard), Expression::Quote(merge)] =>
-        {
-            let merge = std::mem::take(merge);
-            let shard = std::mem::take(shard);
-            let leave = std::mem::take(leave);
-            let check = std::mem::take(check);
-
-            let top = stack.len();
-            stack.truncate(top - 4);
-
-            parbinrec_aux(evaluator, &check, &leave, &shard, &merge)
-        }
-        [.., _, _, _, _] => {
-            stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
-        }
-        _ => {
-            stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
-        }
-    }
-}
-
-fn parbinrec_aux(
-    evaluator: &mut Evaluator,
-    check: &Quote,
-    leave: &Quote,
-    shard: &Quote,
-    merge: &Quote,
-) -> Result<(), Effect> {
-    evaluator.evaluate(check.iter().cloned())?;
-
-    match evaluator.stack.pop() {
-        Some(Expression::Boolean(Boolean(false))) => {
-            evaluator.evaluate(shard.iter().cloned())?;
-
-            let [expression1, expression2] = [
-                evaluator.stack.pop().unwrap(),
-                evaluator.stack.pop().unwrap(),
-            ];
-
-            let [result1, result2] = std::thread::scope(|s| {
-                let globals = evaluator.globals.clone();
-                let handle1 = s.spawn(|| {
-                    let mut evaluator = Evaluator {
-                        stack: vec![expression1],
-                        globals,
-                    };
-                    parbinrec_aux(&mut evaluator, check, leave, shard, merge)?;
-                    Ok(evaluator.stack)
-                });
-
-                let globals = evaluator.globals.clone();
-                let handle2 = s.spawn(|| {
-                    let mut evaluator = Evaluator {
-                        stack: vec![expression2],
-                        globals,
-                    };
-                    parbinrec_aux(&mut evaluator, check, leave, shard, merge)?;
-                    Ok(evaluator.stack)
-                });
-
-                [handle1.join().unwrap(), handle2.join().unwrap()]
-            });
-
-            evaluator.stack.extend(result1?);
-            evaluator.stack.extend(result2?);
             evaluator.evaluate(merge.iter().cloned())
         }
         Some(Expression::Boolean(Boolean(true))) => evaluator.evaluate(leave.iter().cloned()),

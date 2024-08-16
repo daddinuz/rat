@@ -13,7 +13,6 @@ use crate::evaluator::Evaluator;
 use crate::boolean::Boolean;
 use crate::decimal::Decimal;
 use crate::integer::Integer;
-use crate::process::Process;
 use crate::quote::Quote;
 use crate::record::Record;
 use crate::string::String;
@@ -25,7 +24,6 @@ pub enum Expression {
     Boolean(Boolean),
     Decimal(Decimal),
     Integer(Integer),
-    Process(Process),
     Quote(Quote),
     Record(Record),
     String(String),
@@ -54,13 +52,6 @@ impl From<Integer> for Expression {
     #[inline]
     fn from(value: Integer) -> Self {
         Self::Integer(value)
-    }
-}
-
-impl From<Process> for Expression {
-    #[inline]
-    fn from(value: Process) -> Self {
-        Self::Process(value)
     }
 }
 
@@ -107,7 +98,6 @@ impl Evaluate<Expression> for &mut Evaluator {
             Expression::Boolean(v) => self.evaluate(v),
             Expression::Decimal(v) => self.evaluate(v),
             Expression::Integer(v) => self.evaluate(v),
-            Expression::Process(v) => self.evaluate(v),
             Expression::Quote(v) => self.evaluate(v),
             Expression::Record(v) => self.evaluate(v),
             Expression::String(v) => self.evaluate(v),
@@ -123,7 +113,6 @@ impl Display for Expression {
             Expression::Boolean(v) => Display::fmt(v, f),
             Expression::Decimal(v) => Display::fmt(v, f),
             Expression::Integer(v) => Display::fmt(v, f),
-            Expression::Process(v) => Display::fmt(v, f),
             Expression::Quote(v) => Display::fmt(v, f),
             Expression::Record(v) => Display::fmt(v, f),
             Expression::String(v) => Display::fmt(v, f),
@@ -139,7 +128,6 @@ impl Debug for Expression {
             Expression::Boolean(v) => Debug::fmt(v, f),
             Expression::Decimal(v) => Debug::fmt(v, f),
             Expression::Integer(v) => Debug::fmt(v, f),
-            Expression::Process(v) => Debug::fmt(v, f),
             Expression::Quote(v) => Debug::fmt(v, f),
             Expression::Record(v) => Debug::fmt(v, f),
             Expression::String(v) => Debug::fmt(v, f),
