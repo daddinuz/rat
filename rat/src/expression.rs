@@ -14,7 +14,6 @@ use crate::boolean::Boolean;
 use crate::decimal::Decimal;
 use crate::integer::Integer;
 use crate::quote::Quote;
-use crate::record::Record;
 use crate::string::String;
 use crate::symbol::Symbol;
 use crate::verb::Verb;
@@ -25,7 +24,6 @@ pub enum Expression {
     Decimal(Decimal),
     Integer(Integer),
     Quote(Quote),
-    Record(Record),
     String(String),
     Symbol(Symbol),
     Verb(Verb),
@@ -62,13 +60,6 @@ impl From<Quote> for Expression {
     }
 }
 
-impl From<Record> for Expression {
-    #[inline]
-    fn from(value: Record) -> Self {
-        Self::Record(value)
-    }
-}
-
 impl From<String> for Expression {
     #[inline]
     fn from(value: String) -> Self {
@@ -99,7 +90,6 @@ impl Evaluate<Expression> for &mut Evaluator {
             Expression::Decimal(v) => self.evaluate(v),
             Expression::Integer(v) => self.evaluate(v),
             Expression::Quote(v) => self.evaluate(v),
-            Expression::Record(v) => self.evaluate(v),
             Expression::String(v) => self.evaluate(v),
             Expression::Symbol(v) => self.evaluate(v),
             Expression::Verb(v) => self.evaluate(v),
@@ -114,7 +104,6 @@ impl Display for Expression {
             Expression::Decimal(v) => Display::fmt(v, f),
             Expression::Integer(v) => Display::fmt(v, f),
             Expression::Quote(v) => Display::fmt(v, f),
-            Expression::Record(v) => Display::fmt(v, f),
             Expression::String(v) => Display::fmt(v, f),
             Expression::Symbol(v) => Display::fmt(v, f),
             Expression::Verb(v) => Display::fmt(v, f),
@@ -129,7 +118,6 @@ impl Debug for Expression {
             Expression::Decimal(v) => Debug::fmt(v, f),
             Expression::Integer(v) => Debug::fmt(v, f),
             Expression::Quote(v) => Debug::fmt(v, f),
-            Expression::Record(v) => Debug::fmt(v, f),
             Expression::String(v) => Debug::fmt(v, f),
             Expression::Symbol(v) => Debug::fmt(v, f),
             Expression::Verb(v) => Debug::fmt(v, f),

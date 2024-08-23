@@ -13,7 +13,6 @@ pub mod boolean;
 pub mod decimal;
 pub mod integer;
 pub mod quote;
-pub mod record;
 pub mod string;
 pub mod symbol;
 pub mod verb;

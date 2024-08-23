@@ -21,7 +21,6 @@ use crate::expression::Expression;
 use crate::integer::Integer;
 use crate::locution::{Locution, OwnedLocution};
 use crate::quote::Quote;
-use crate::record::Record;
 use crate::string::String;
 use crate::symbol::Symbol;
 use crate::vocabulary::{Definition, Visibility, Vocabulary};
@@ -258,23 +257,6 @@ impl FromStr for Quote {
     }
 }
 
-impl FromStr for Record {
-    type Err = ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        check_token_boundary(s)?;
-
-        let mut pairs = Grammar::parse(Rule::Record, s).map_err(with_origin(Origin::Unknown))?;
-        assert_eq!(pairs.len(), 1);
-
-        parse_record(
-            &mut Default::default(),
-            Origin::Unknown,
-            pairs.next().unwrap(),
-        )
-    }
-}
-
 impl FromStr for String {
     type Err = ParseError;
 
@@ -437,7 +419,6 @@ fn parse_expression(
         Rule::Decimal => parse_decimal(origin, pair).map(Expression::Decimal),
         Rule::Integer => parse_integer(origin, pair).map(Expression::Integer),
         Rule::Quote => parse_quote(parser, origin, pair).map(Expression::Quote),
-        Rule::Record => parse_record(parser, origin, pair).map(Expression::Record),
         Rule::String => parse_string(origin, pair).map(Expression::String),
         Rule::Symbol => parse_symbol(origin, pair).map(Expression::Symbol),
         rule => unreachable!("unexpected rule: `{rule:?}`"),
@@ -522,36 +503,6 @@ fn parse_quote(parser: &mut Parser, origin: Origin, pair: PestPair) -> Result<Qu
     }
 
     Ok(quote)
-}
-
-fn parse_record(parser: &mut Parser, origin: Origin, pair: PestPair) -> Result<Record, ParseError> {
-    assert_eq!(pair.as_rule(), Rule::Record);
-
-    let mut key = None;
-    let mut value = None;
-    let mut record = Record::new();
-
-    for pair in pair.into_inner() {
-        match pair.as_rule() {
-            Rule::Expression => {
-                let exp = parse_expression(parser, origin, pair)?;
-                if key.is_none() {
-                    key = Some(exp);
-                } else {
-                    value = Some(exp);
-                }
-            }
-            Rule::RightCurlyBracket => break,
-            Rule::Comma | Rule::Equal | Rule::LeftCurlyBracket => (),
-            rule => unreachable!("unexpected rule: `{rule:?}`"),
-        }
-
-        if value.is_some() {
-            record.insert(key.take().unwrap(), value.take().unwrap());
-        }
-    }
-
-    Ok(record)
 }
 
 fn parse_string(origin: Origin, pair: PestPair) -> Result<String, ParseError> {

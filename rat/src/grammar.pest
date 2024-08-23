@@ -31,7 +31,7 @@ Locution = @{
 }
 
 Expression = {
-    (Boolean | Decimal | Integer | Quote | Record | String | Symbol)
+    (Boolean | Decimal | Integer | Quote | String | Symbol)
 }
 
 Boolean = @{
@@ -48,10 +48,6 @@ Integer = @{
 
 Quote = {
     LeftSquareBracket ~ Phrase? ~ RightSquareBracket
-}
-
-Record = {
-    LeftCurlyBracket ~ (Expression ~ Equal ~ Expression)? ~ (Comma ~ Expression ~ Equal ~ Expression)* ~ Comma? ~ RightCurlyBracket
 }
 
 String = ${
@@ -96,14 +92,6 @@ LeftArrow = @{
 
 Semicolon = @{
     ";"
-}
-
-LeftCurlyBracket = @{
-    "{"
-}
-
-RightCurlyBracket = @{
-    "}"
 }
 
 LeftSquareBracket = @{
