@@ -6,15 +6,15 @@
 
 use std::fmt::{Debug, Display};
 
-use crate::effect::Effect;
+use crate::error::RuntimeError;
 use crate::evaluate::Evaluate;
 use crate::evaluator::Evaluator;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Verb(pub fn(&mut Evaluator) -> Result<(), Effect>);
+pub struct Verb(pub fn(&mut Evaluator) -> Result<(), RuntimeError>);
 
 impl Evaluate<Verb> for &mut Evaluator {
-    type Output = Result<(), Effect>;
+    type Output = Result<(), RuntimeError>;
 
     fn evaluate(self, Verb(verb): Verb) -> Self::Output {
         verb(self)

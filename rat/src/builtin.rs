@@ -6,7 +6,7 @@
 
 use std::io::{self, Write};
 
-use crate::effect::Effect;
+use crate::error::RuntimeError;
 use crate::evaluate::Evaluate;
 use crate::evaluator::Evaluator;
 
@@ -19,7 +19,7 @@ use crate::quote::Quote;
 use crate::string::String;
 use crate::symbol::Symbol;
 
-pub fn neg(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn neg(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &mut stack[..] {
@@ -33,16 +33,16 @@ pub fn neg(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn incr(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn incr(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &mut stack[..] {
@@ -56,16 +56,16 @@ pub fn incr(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn decr(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn decr(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &mut stack[..] {
@@ -79,16 +79,16 @@ pub fn decr(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn add(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn add(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -104,16 +104,16 @@ pub fn add(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn sub(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn sub(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -129,16 +129,16 @@ pub fn sub(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn mul(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn mul(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -154,22 +154,22 @@ pub fn mul(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn div(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn div(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
         [.., Expression::Integer(_), Expression::Integer(Integer::ZERO)] => {
             stack.push(Symbol::divide_by_zero().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         [.., Expression::Integer(ref mut lhs), Expression::Integer(rhs)] => {
             *lhs /= rhs;
@@ -183,22 +183,22 @@ pub fn div(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn rem(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn rem(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
         [.., Expression::Integer(_), Expression::Integer(Integer::ZERO)] => {
             stack.push(Symbol::divide_by_zero().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         [.., Expression::Integer(ref mut lhs), Expression::Integer(rhs)] => {
             *lhs %= rhs;
@@ -212,16 +212,16 @@ pub fn rem(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn eq(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn eq(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -232,12 +232,12 @@ pub fn eq(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn ne(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn ne(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -248,12 +248,12 @@ pub fn ne(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn gt(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn gt(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -275,16 +275,16 @@ pub fn gt(evaluator: &mut Evaluator) -> Result<(), Effect> {
         },
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn ge(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn ge(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -306,16 +306,16 @@ pub fn ge(evaluator: &mut Evaluator) -> Result<(), Effect> {
         },
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn lt(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn lt(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -337,16 +337,16 @@ pub fn lt(evaluator: &mut Evaluator) -> Result<(), Effect> {
         },
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn le(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn le(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -368,16 +368,16 @@ pub fn le(evaluator: &mut Evaluator) -> Result<(), Effect> {
         },
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn positive(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn positive(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &stack[..] {
@@ -391,16 +391,16 @@ pub fn positive(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn zero(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn zero(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &stack[..] {
@@ -414,16 +414,16 @@ pub fn zero(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn negative(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn negative(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &stack[..] {
@@ -437,16 +437,16 @@ pub fn negative(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn not(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn not(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &mut stack[..] {
@@ -456,16 +456,16 @@ pub fn not(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn and(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn and(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -476,16 +476,16 @@ pub fn and(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn or(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn or(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -496,16 +496,16 @@ pub fn or(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn bitwise_not(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn bitwise_not(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &mut stack[..] {
@@ -519,16 +519,16 @@ pub fn bitwise_not(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn bitwise_and(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn bitwise_and(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -544,16 +544,16 @@ pub fn bitwise_and(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn bitwise_xor(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn bitwise_xor(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -569,16 +569,16 @@ pub fn bitwise_xor(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn bitwise_or(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn bitwise_or(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -594,16 +594,16 @@ pub fn bitwise_or(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn shl(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn shl(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -614,16 +614,16 @@ pub fn shl(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn shr(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn shr(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -634,16 +634,16 @@ pub fn shr(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn ushr(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn ushr(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -654,16 +654,16 @@ pub fn ushr(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn cat(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn cat(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &mut stack[..] {
@@ -675,55 +675,55 @@ pub fn cat(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn quote(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn quote(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
     let expression = stack.pop().ok_or_else(|| {
         stack.push(Symbol::stack_underflow().into());
-        Effect::Raise
+        RuntimeError
     })?;
 
     stack.push(Expression::Quote(Quote::from([expression])));
     Ok(())
 }
 
-pub fn unquote(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn unquote(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     match evaluator.stack.pop() {
         Some(Expression::Quote(quote)) => evaluator.evaluate(quote.iter().cloned()),
         Some(expression) => {
             evaluator
                 .stack
                 .extend_from_slice(&[expression, Symbol::type_error().into()]);
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             evaluator.stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn eval(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn eval(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack.pop() {
         Some(expression) => evaluator.evaluate(expression),
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn i(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn i(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &stack[..] {
@@ -731,23 +731,23 @@ pub fn i(evaluator: &mut Evaluator) -> Result<(), Effect> {
         [.., _] => eval(evaluator),
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn x(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn x(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
     let expression = stack.last().cloned().ok_or_else(|| {
         stack.push(Symbol::stack_underflow().into());
-        Effect::Raise
+        RuntimeError
     })?;
 
     stack.push(expression);
     i(evaluator)
 }
 
-pub fn unary2(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn unary2(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
     let top = stack.len();
 
@@ -764,16 +764,16 @@ pub fn unary2(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn dip(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn dip(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     match &evaluator.stack[..] {
         [.., _, Expression::Quote(_)] => {
             let top = evaluator.stack.len();
@@ -784,16 +784,16 @@ pub fn dip(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             evaluator.stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             evaluator.stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn r#if(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn r#if(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -811,16 +811,16 @@ pub fn r#if(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _, _] => {
             evaluator.stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             evaluator.stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn r#else(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn r#else(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -838,16 +838,16 @@ pub fn r#else(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             evaluator.stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             evaluator.stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn if_else(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn if_else(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -860,20 +860,20 @@ pub fn if_else(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _, _] => {
             evaluator.stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             evaluator.stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn raise(_: &mut Evaluator) -> Result<(), Effect> {
-    Err(Effect::Raise)
+pub fn raise(_: &mut Evaluator) -> Result<(), RuntimeError> {
+    Err(RuntimeError)
 }
 
-pub fn r#try(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn r#try(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     match &evaluator.stack[..] {
         [.., Expression::Quote(_), Expression::Quote(_), _] => {
             let guarded = evaluator.stack.pop();
@@ -881,7 +881,7 @@ pub fn r#try(evaluator: &mut Evaluator) -> Result<(), Effect> {
             let len = evaluator.stack.len();
 
             match unquote(evaluator) {
-                Err(Effect::Raise) if evaluator.stack.last() == guarded.as_ref() => {
+                Err(RuntimeError) if evaluator.stack.last() == guarded.as_ref() => {
                     evaluator.stack.truncate(len);
                     evaluator.stack[len - 1] = guard;
                     unquote(evaluator)
@@ -891,62 +891,62 @@ pub fn r#try(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _, _] => {
             evaluator.stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             evaluator.stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn first(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn first(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &stack[..] {
         [.., Expression::Quote(quote)] => {
             let expression = quote.first().cloned().ok_or_else(|| {
                 stack.push(Symbol::out_of_range().into());
-                Effect::Raise
+                RuntimeError
             })?;
             *stack.last_mut().unwrap() = expression;
             Ok(())
         }
         [.., _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn last(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn last(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &stack[..] {
         [.., Expression::Quote(quote)] => {
             let expression = quote.last().cloned().ok_or_else(|| {
                 stack.push(Symbol::out_of_range().into());
-                Effect::Raise
+                RuntimeError
             })?;
             *stack.last_mut().unwrap() = expression;
             Ok(())
         }
         [.., _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn prefix(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn prefix(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &stack[..] {
@@ -965,16 +965,16 @@ pub fn prefix(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn suffix(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn suffix(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &stack[..] {
@@ -985,16 +985,16 @@ pub fn suffix(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn at(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn at(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -1003,7 +1003,7 @@ pub fn at(evaluator: &mut Evaluator) -> Result<(), Effect> {
 
             if at.is_negative() || (at as usize) >= quote_len {
                 stack.push(Symbol::out_of_range().into());
-                return Err(Effect::Raise);
+                return Err(RuntimeError);
             }
 
             let expression = quote[at as usize].clone();
@@ -1014,16 +1014,16 @@ pub fn at(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn split(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn split(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match stack[..] {
@@ -1032,7 +1032,7 @@ pub fn split(evaluator: &mut Evaluator) -> Result<(), Effect> {
 
             if at.is_negative() || (at as usize) >= quote_len {
                 stack.push(Symbol::out_of_range().into());
-                return Err(Effect::Raise);
+                return Err(RuntimeError);
             }
 
             *stack.last_mut().unwrap() = quote.split(at as usize).into();
@@ -1040,16 +1040,16 @@ pub fn split(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn len(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn len(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &stack[..] {
@@ -1063,29 +1063,29 @@ pub fn len(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn swap(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn swap(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
     let top = stack.len();
 
     if top < 2 {
         stack.push(Symbol::stack_underflow().into());
-        return Err(Effect::Raise);
+        return Err(RuntimeError);
     }
 
     stack.swap(top - 1, top - 2);
     Ok(())
 }
 
-pub fn rollup(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn rollup(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &mut stack[..] {
@@ -1096,12 +1096,12 @@ pub fn rollup(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn rolldown(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn rolldown(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &mut stack[..] {
@@ -1112,12 +1112,12 @@ pub fn rolldown(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn rotate(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn rotate(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &mut stack[..] {
@@ -1127,34 +1127,34 @@ pub fn rotate(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn pop(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn pop(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     if stack.pop().is_none() {
         stack.push(Symbol::stack_underflow().into());
-        return Err(Effect::Raise);
+        return Err(RuntimeError);
     }
 
     Ok(())
 }
 
-pub fn dup(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn dup(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
     let expression = stack.last().cloned().ok_or_else(|| {
         stack.push(Symbol::stack_underflow().into());
-        Effect::Raise
+        RuntimeError
     })?;
 
     stack.push(expression);
     Ok(())
 }
 
-pub fn ask(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn ask(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &stack[..] {
@@ -1163,23 +1163,23 @@ pub fn ask(evaluator: &mut Evaluator) -> Result<(), Effect> {
 
             write!(stdout_lock, "{prompt}").map_err(|_| {
                 stack.push(Symbol::io_error().into());
-                Effect::Raise
+                RuntimeError
             })?;
 
             stdout_lock.flush().map_err(|_| {
                 stack.push(Symbol::io_error().into());
-                Effect::Raise
+                RuntimeError
             })?;
 
             stack.pop();
         }
         [.., _] => {
             evaluator.stack.push(Symbol::type_error().into());
-            return Err(Effect::Raise);
+            return Err(RuntimeError);
         }
         _ => {
             evaluator.stack.push(Symbol::stack_underflow().into());
-            return Err(Effect::Raise);
+            return Err(RuntimeError);
         }
     }
 
@@ -1187,34 +1187,34 @@ pub fn ask(evaluator: &mut Evaluator) -> Result<(), Effect> {
 
     io::stdin().read_line(&mut buf).map_err(|_| {
         stack.push(Symbol::io_error().into());
-        Effect::Raise
+        RuntimeError
     })?;
 
     stack.push(Expression::String(String::from_utf8(&buf)));
     Ok(())
 }
 
-pub fn say(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn say(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     let expression = stack.pop().ok_or_else(|| {
         stack.push(Symbol::stack_underflow().into());
-        Effect::Raise
+        RuntimeError
     })?;
 
     writeln!(io::stdout(), "{expression}").map_err(|_| {
         stack.push(Symbol::io_error().into());
-        Effect::Raise
+        RuntimeError
     })
 }
 
-pub fn show(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn show(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
     let mut stdout = io::stdout().lock();
 
     write!(stdout, "#>>>").map_err(|_| {
         stack.push(Symbol::io_error().into());
-        Effect::Raise
+        RuntimeError
     })?;
 
     stack
@@ -1222,16 +1222,16 @@ pub fn show(evaluator: &mut Evaluator) -> Result<(), Effect> {
         .try_for_each(|e| write!(stdout, " {e:?}"))
         .map_err(|_| {
             stack.push(Symbol::io_error().into());
-            Effect::Raise
+            RuntimeError
         })?;
 
     writeln!(stdout).map_err(|_| {
         stack.push(Symbol::io_error().into());
-        Effect::Raise
+        RuntimeError
     })
 }
 
-pub fn linrec(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn linrec(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &mut stack[..] {
@@ -1249,11 +1249,11 @@ pub fn linrec(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _, _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
@@ -1264,7 +1264,7 @@ fn linrec_aux(
     leave: &Quote,
     shard: &Quote,
     merge: &Quote,
-) -> Result<(), Effect> {
+) -> Result<(), RuntimeError> {
     evaluator.evaluate(check.iter().cloned())?;
 
     match evaluator.stack.pop() {
@@ -1279,16 +1279,16 @@ fn linrec_aux(
                 .stack
                 .extend_from_slice(&[expression, Symbol::type_error().into()]);
 
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         None => {
             evaluator.stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
 
-pub fn binrec(evaluator: &mut Evaluator) -> Result<(), Effect> {
+pub fn binrec(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
     let stack = &mut evaluator.stack;
 
     match &mut stack[..] {
@@ -1306,11 +1306,11 @@ pub fn binrec(evaluator: &mut Evaluator) -> Result<(), Effect> {
         }
         [.., _, _, _, _] => {
             stack.push(Symbol::type_error().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         _ => {
             stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }
@@ -1321,7 +1321,7 @@ fn binrec_aux(
     leave: &Quote,
     shard: &Quote,
     merge: &Quote,
-) -> Result<(), Effect> {
+) -> Result<(), RuntimeError> {
     evaluator.evaluate(check.iter().cloned())?;
 
     match evaluator.stack.pop() {
@@ -1342,11 +1342,11 @@ fn binrec_aux(
                 .stack
                 .extend_from_slice(&[expression, Symbol::type_error().into()]);
 
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
         None => {
             evaluator.stack.push(Symbol::stack_underflow().into());
-            Err(Effect::Raise)
+            Err(RuntimeError)
         }
     }
 }

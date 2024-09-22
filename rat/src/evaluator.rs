@@ -4,7 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-use crate::effect::Effect;
+use crate::error::RuntimeError;
 use crate::evaluate::Evaluate;
 use crate::expression::Expression;
 
@@ -14,8 +14,8 @@ pub struct Evaluator {
 }
 
 impl Evaluator {
-    pub const fn new() -> Self {
-        Self { stack: Vec::new() }
+    pub fn new() -> Self {
+        Default::default()
     }
 }
 
@@ -23,7 +23,7 @@ impl<I> Evaluate<I> for &mut Evaluator
 where
     I: Iterator<Item = Expression>,
 {
-    type Output = Result<(), Effect>;
+    type Output = Result<(), RuntimeError>;
 
     fn evaluate(self, mut expressions: I) -> Self::Output {
         expressions.try_for_each(|e| self.evaluate(e))

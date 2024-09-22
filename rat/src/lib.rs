@@ -20,12 +20,12 @@ pub mod verb;
 pub mod expression;
 
 pub mod builtin;
-pub mod effect;
+pub mod dictionary;
+pub mod error;
 pub mod evaluate;
 pub mod evaluator;
 pub mod locution;
 pub mod parser;
-pub mod vocabulary;
 pub mod word;
 
 use std::env;

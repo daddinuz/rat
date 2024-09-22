@@ -6,7 +6,7 @@
 
 use std::fmt::{Debug, Display};
 
-use crate::effect::Effect;
+use crate::error::RuntimeError;
 use crate::evaluate::Evaluate;
 use crate::evaluator::Evaluator;
 
@@ -30,7 +30,7 @@ pub enum Expression {
 }
 
 const _: [(); 16] = [(); std::mem::size_of::<Expression>()];
-const _: [(); 1] = [(); std::mem::size_of::<Result<(), Effect>>()];
+const _: [(); 1] = [(); std::mem::size_of::<Result<(), RuntimeError>>()];
 
 impl From<Boolean> for Expression {
     #[inline]
@@ -82,7 +82,7 @@ impl From<Verb> for Expression {
 }
 
 impl Evaluate<Expression> for &mut Evaluator {
-    type Output = Result<(), Effect>;
+    type Output = Result<(), RuntimeError>;
 
     fn evaluate(self, expression: Expression) -> Self::Output {
         match expression {

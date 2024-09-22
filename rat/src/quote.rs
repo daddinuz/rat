@@ -8,7 +8,7 @@ use std::fmt::{Debug, Display};
 use std::ops::Deref;
 use std::sync::Arc;
 
-use crate::effect::Effect;
+use crate::error::RuntimeError;
 use crate::evaluate::Evaluate;
 use crate::evaluator::Evaluator;
 use crate::expression::Expression;
@@ -94,7 +94,7 @@ impl Quote {
 }
 
 impl Evaluate<Quote> for &mut Evaluator {
-    type Output = Result<(), Effect>;
+    type Output = Result<(), RuntimeError>;
 
     fn evaluate(self, value: Quote) -> Self::Output {
         self.stack.push(Expression::Quote(value));

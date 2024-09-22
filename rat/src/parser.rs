@@ -17,25 +17,25 @@ use std::{env, fs};
 
 use crate::boolean::Boolean;
 use crate::decimal::Decimal;
+use crate::dictionary::{Definition, Dictionary, Visibility};
 use crate::expression::Expression;
 use crate::integer::Integer;
 use crate::locution::{Locution, OwnedLocution};
 use crate::quote::Quote;
 use crate::string::String;
 use crate::symbol::Symbol;
-use crate::vocabulary::{Definition, Visibility, Vocabulary};
 use crate::word::{OwnedWord, Word};
 
 #[derive(Debug, Default)]
 pub struct Parser {
-    vocabulary: Vocabulary,
-    cache: HashMap<OwnedLocution, Arc<Vocabulary>>,
+    dictionary: Dictionary,
+    cache: HashMap<OwnedLocution, Arc<Dictionary>>,
 }
 
-impl From<Vocabulary> for Parser {
-    fn from(vocabulary: Vocabulary) -> Self {
+impl From<Dictionary> for Parser {
+    fn from(dictionary: Dictionary) -> Self {
         Self {
-            vocabulary,
+            dictionary,
             cache: Default::default(),
         }
     }
@@ -48,13 +48,13 @@ impl Parser {
 
     pub fn with_prelude() -> Self {
         Self {
-            vocabulary: Vocabulary::with_prelude(),
+            dictionary: Dictionary::with_prelude(),
             cache: Default::default(),
         }
     }
 
-    pub fn vocabulary(&self) -> &Vocabulary {
-        &self.vocabulary
+    pub fn dictionary(&self) -> &Dictionary {
+        &self.dictionary
     }
 
     pub fn parse(&mut self, origin: Origin, source: &str) -> Result<Vec<Expression>, ParseError> {
@@ -82,11 +82,11 @@ impl Parser {
         locution: &Locution,
         visibility: Visibility,
     ) -> Result<(), ImportError> {
-        if let Some(vocabulary) = self.cache.get(locution) {
-            self.vocabulary.define(
+        if let Some(dictionary) = self.cache.get(locution) {
+            self.dictionary.define(
                 word.to_owned(),
-                Definition::Vocabulary {
-                    vocabulary: vocabulary.clone(),
+                Definition::Dictionary {
+                    dictionary: dictionary.clone(),
                     visibility,
                 },
             );
@@ -135,15 +135,15 @@ impl Parser {
             .parse(Origin::Path(path.as_path()), &source)
             .map_err(|e| ImportError::new(format!("`{}`\n{}", locution, e)))?;
 
-        parser.vocabulary.retain(|_, d| d.is_extern());
+        parser.dictionary.retain(|_, d| d.is_extern());
 
-        let vocabulary = Arc::new(parser.vocabulary);
+        let dictionary = Arc::new(parser.dictionary);
 
-        self.cache.insert(locution.to_owned(), vocabulary.clone());
-        self.vocabulary.define(
+        self.cache.insert(locution.to_owned(), dictionary.clone());
+        self.dictionary.define(
             word.to_owned(),
-            Definition::Vocabulary {
-                vocabulary,
+            Definition::Dictionary {
+                dictionary,
                 visibility,
             },
         );
@@ -382,7 +382,7 @@ fn parse_definition(parser: &mut Parser, origin: Origin, pair: PestPair) -> Resu
         Rule::LeftArrow => {
             let phrase = parse_phrase(parser, origin, pairs.next().unwrap())?;
 
-            parser.vocabulary.define(
+            parser.dictionary.define(
                 word.to_owned(),
                 Definition::Phrase {
                     phrase: phrase.into(),
@@ -439,7 +439,7 @@ fn parse_phrase(
                 let span = pair.as_span();
                 let locution = parse_locution(origin, pair)?;
                 parser
-                    .vocabulary
+                    .dictionary
                     .lookup(locution)
                     .map(|expressions| phrase.extend_from_slice(expressions))
                     .ok_or_else(|| parse_error(origin, span, undefined_locution(locution)))?;

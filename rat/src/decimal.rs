@@ -13,7 +13,7 @@ use std::ops::{
 };
 
 use crate::codegen;
-use crate::effect::Effect;
+use crate::error::RuntimeError;
 use crate::evaluate::Evaluate;
 use crate::evaluator::Evaluator;
 use crate::expression::Expression;
@@ -77,7 +77,7 @@ impl Decimal {
 }
 
 impl Evaluate<Decimal> for &mut Evaluator {
-    type Output = Result<(), Effect>;
+    type Output = Result<(), RuntimeError>;
 
     fn evaluate(self, value: Decimal) -> Self::Output {
         self.stack.push(Expression::Decimal(value));

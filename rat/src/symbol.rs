@@ -6,7 +6,7 @@
 
 use ustr::Ustr;
 
-use crate::effect::Effect;
+use crate::error::RuntimeError;
 use crate::evaluate::Evaluate;
 use crate::evaluator::Evaluator;
 use crate::expression::Expression;
@@ -54,7 +54,7 @@ impl Symbol {
 }
 
 impl Evaluate<Symbol> for &mut Evaluator {
-    type Output = Result<(), Effect>;
+    type Output = Result<(), RuntimeError>;
 
     fn evaluate(self, value: Symbol) -> Self::Output {
         self.stack.push(Expression::Symbol(value));
