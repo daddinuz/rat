@@ -72,7 +72,7 @@ impl Display for Symbol {
 impl Debug for Symbol {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(s) = self;
-        write!(f, "'{}'", s)
+        write!(f, "$\"{}\"", s)
     }
 }
 

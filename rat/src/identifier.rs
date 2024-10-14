@@ -14,26 +14,26 @@ use crate::word::Word;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
-pub struct Locution(str);
+pub struct Identifier(str);
 
-impl ToOwned for Locution {
-    type Owned = OwnedLocution;
+impl ToOwned for Identifier {
+    type Owned = OwnedIdentifier;
 
     fn to_owned(&self) -> Self::Owned {
         let Self(inner) = self;
-        OwnedLocution {
+        OwnedIdentifier {
             inner: inner.into(),
         }
     }
 }
 
-impl Locution {
+impl Identifier {
     /// Whitespaces are not allowed in `literal`.
     // TODO: this must always be kept in sync with `grammar.pest`
-    pub const fn try_from_literal(literal: &str) -> Result<&Self, InvalidLocutionLiteral> {
+    pub const fn try_from_literal(literal: &str) -> Result<&Self, InvalidIdentifierLiteral> {
         let bytes = literal.as_bytes();
         if bytes.is_empty() {
-            return Err(InvalidLocutionLiteral);
+            return Err(InvalidIdentifierLiteral);
         }
 
         let mut start = 0;
@@ -43,7 +43,7 @@ impl Locution {
 
             if b'\\' == c {
                 if !Word::is_valid(bytes, start, end) {
-                    return Err(InvalidLocutionLiteral);
+                    return Err(InvalidIdentifierLiteral);
                 }
 
                 start = end + 1;
@@ -53,13 +53,13 @@ impl Locution {
         }
 
         if !Word::is_valid(bytes, start, end) {
-            return Err(InvalidLocutionLiteral);
+            return Err(InvalidIdentifierLiteral);
         }
 
-        let locution = literal as *const str as *const Self;
-        // Safety: `Locution` is a `repr(transparent)` wrapper around `str`
+        let identifier = literal as *const str as *const Self;
+        // Safety: `Identifier` is a `repr(transparent)` wrapper around `str`
         // have a look at: https://stackoverflow.com/a/72106272
-        Ok(unsafe { &*locution })
+        Ok(unsafe { &*identifier })
     }
 
     #[inline]
@@ -74,65 +74,65 @@ impl Locution {
     }
 }
 
-impl Display for Locution {
+impl Display for Identifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl Debug for Locution {
+impl Debug for Identifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.as_str())
     }
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct OwnedLocution {
+pub struct OwnedIdentifier {
     inner: Arc<str>,
 }
 
-impl From<&Locution> for OwnedLocution {
-    fn from(locution: &Locution) -> Self {
-        locution.to_owned()
+impl From<&Identifier> for OwnedIdentifier {
+    fn from(identifier: &Identifier) -> Self {
+        identifier.to_owned()
     }
 }
 
-impl Deref for OwnedLocution {
-    type Target = Locution;
+impl Deref for OwnedIdentifier {
+    type Target = Identifier;
 
     fn deref(&self) -> &Self::Target {
         self.borrow()
     }
 }
 
-impl Borrow<Locution> for OwnedLocution {
-    fn borrow(&self) -> &Locution {
-        let locution = self.inner.as_ref() as *const str as *const Locution;
-        // Safety: `Locution` is a `repr(transparent)` wrapper around `str`
+impl Borrow<Identifier> for OwnedIdentifier {
+    fn borrow(&self) -> &Identifier {
+        let identifier = self.inner.as_ref() as *const str as *const Identifier;
+        // Safety: `Identifier` is a `repr(transparent)` wrapper around `str`
         // have a look at: https://stackoverflow.com/a/72106272
-        unsafe { &*locution }
+        unsafe { &*identifier }
     }
 }
 
-impl Display for OwnedLocution {
+impl Display for OwnedIdentifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl Debug for OwnedLocution {
+impl Debug for OwnedIdentifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.as_str())
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct InvalidLocutionLiteral;
+pub struct InvalidIdentifierLiteral;
 
-impl Display for InvalidLocutionLiteral {
+impl Display for InvalidIdentifierLiteral {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Debug::fmt(self, f)
     }
 }
 
-impl Error for InvalidLocutionLiteral {}
+impl Error for InvalidIdentifierLiteral {}

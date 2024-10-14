@@ -14,14 +14,14 @@ use crate::boolean::Boolean;
 use crate::builtin;
 use crate::decimal::Decimal;
 use crate::expression::Expression;
-use crate::locution::Locution;
+use crate::identifier::Identifier;
 use crate::verb::Verb;
 use crate::word::{OwnedWord, Word};
 
 #[derive(Debug)]
 pub enum Definition {
-    Phrase {
-        phrase: Arc<[Expression]>,
+    Body {
+        body: Arc<[Expression]>,
         visibility: Visibility,
     },
     Dictionary {
@@ -34,7 +34,7 @@ impl Definition {
     pub fn is_intern(&self) -> bool {
         Visibility::Intern
             == match self {
-                Definition::Phrase { visibility, .. } => *visibility,
+                Definition::Body { visibility, .. } => *visibility,
                 Definition::Dictionary { visibility, .. } => *visibility,
             }
     }
@@ -66,11 +66,11 @@ impl Dictionary {
         Self {
             definitions: PRELUDE
                 .into_iter()
-                .map(|(word, phrase)| {
+                .map(|(word, body)| {
                     (
                         word.into(),
-                        Definition::Phrase {
-                            phrase: phrase.into(),
+                        Definition::Body {
+                            body: body.into(),
                             visibility: Visibility::Intern,
                         },
                     )
@@ -91,8 +91,8 @@ impl Dictionary {
         self.definitions.get(word)
     }
 
-    pub fn lookup(&self, locution: &Locution) -> Option<&[Expression]> {
-        let mut words = locution.words();
+    pub fn lookup(&self, identifier: &Identifier) -> Option<&[Expression]> {
+        let mut words = identifier.words();
         let mut dictionary = self;
         let mut is_first_word = true;
 
@@ -104,12 +104,12 @@ impl Dictionary {
             }
 
             match definition {
-                Definition::Phrase { phrase, .. } => {
+                Definition::Body { body, .. } => {
                     if words.next().is_some() {
                         break;
                     }
 
-                    return Some(phrase);
+                    return Some(body);
                 }
                 Definition::Dictionary {
                     dictionary: next_dictionary,
@@ -135,7 +135,7 @@ impl Dictionary {
     }
 }
 
-static PRELUDE: [(&Word, &[Expression]); 63] = [
+static PRELUDE: [(&Word, &[Expression]); 64] = [
     (word_literal("neg"), &[Expression::Verb(Verb(builtin::neg))]),
     (
         word_literal("incr"),
@@ -150,12 +150,12 @@ static PRELUDE: [(&Word, &[Expression]); 63] = [
     (word_literal("mul"), &[Expression::Verb(Verb(builtin::mul))]),
     (word_literal("div"), &[Expression::Verb(Verb(builtin::div))]),
     (word_literal("rem"), &[Expression::Verb(Verb(builtin::rem))]),
-    (word_literal("eq"), &[Expression::Verb(Verb(builtin::eq))]),
-    (word_literal("ne"), &[Expression::Verb(Verb(builtin::ne))]),
-    (word_literal("gt"), &[Expression::Verb(Verb(builtin::gt))]),
-    (word_literal("ge"), &[Expression::Verb(Verb(builtin::ge))]),
-    (word_literal("lt"), &[Expression::Verb(Verb(builtin::lt))]),
-    (word_literal("le"), &[Expression::Verb(Verb(builtin::le))]),
+    (word_literal("eq?"), &[Expression::Verb(Verb(builtin::eq))]),
+    (word_literal("ne?"), &[Expression::Verb(Verb(builtin::ne))]),
+    (word_literal("gt?"), &[Expression::Verb(Verb(builtin::gt))]),
+    (word_literal("ge?"), &[Expression::Verb(Verb(builtin::ge))]),
+    (word_literal("lt?"), &[Expression::Verb(Verb(builtin::lt))]),
+    (word_literal("le?"), &[Expression::Verb(Verb(builtin::le))]),
     (
         word_literal("positive?"),
         &[Expression::Verb(Verb(builtin::positive))],
@@ -174,7 +174,7 @@ static PRELUDE: [(&Word, &[Expression]); 63] = [
         &[Expression::Decimal(Decimal::INFINITY)],
     ),
     (
-        word_literal("-inf"),
+        word_literal("neg-inf"),
         &[Expression::Decimal(Decimal::NEG_INFINITY)],
     ),
     (
@@ -297,6 +297,10 @@ static PRELUDE: [(&Word, &[Expression]); 63] = [
     (
         word_literal("binrec"),
         &[Expression::Verb(Verb(builtin::binrec))],
+    ),
+    (
+        word_literal("bind"),
+        &[Expression::Verb(Verb(builtin::bind))],
     ),
 ];
 

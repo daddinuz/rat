@@ -1,0 +1,2 @@
+: make-adder = [$x add] bind ;
+40 2 make-adder i say

@@ -4,8 +4,8 @@
 
 : std @ rat\std ;
 
-÷ abs ← dup negative? [neg] if ;
-÷ halve ← 1 shr ;
-÷ double ← 1 shl ;
-÷ square ← dup mul ;
-÷ pow ← [dup quote [mul] cat] dip std\times ;
+: ^abs = dup negative? [neg] if ;
+: ^halve = 1 shr ;
+: ^double = 1 shl ;
+: ^square = dup mul ;
+: ^pow = [dup quote [mul] cat] dip std\times ;

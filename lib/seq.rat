@@ -5,13 +5,13 @@
 : std @ rat\std ;
 : math @ rat\math ;
 
-÷ empty? ← len zero? ;
+: ^empty? = len zero? ;
 
-÷ merge ←
+: ^merge =
 	[std\dup2 [empty?] unary2 or]
 	[dup empty? [pop] [std\popd] if-else]
 	[
-		std\dup2 [first] unary2 lt
+		std\dup2 [first] unary2 lt?
 		[[[first quote] [suffix] std\bi] dip]
 		[[first quote] [suffix] std\bi std\swapd]
 		if-else
@@ -20,8 +20,8 @@
 	linrec
 ;
 
-÷ mergesort ←
-	[dup len 1 le]
+: ^mergesort =
+	[dup len 1 le?]
 	[]
 	[dup len math\halve split]
 	[merge]

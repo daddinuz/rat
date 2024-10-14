@@ -1350,3 +1350,47 @@ fn binrec_aux(
         }
     }
 }
+
+pub fn bind(evaluator: &mut Evaluator) -> Result<(), RuntimeError> {
+    match evaluator.stack.pop() {
+        Some(Expression::Quote(quote)) => {
+            let mut top = evaluator.stack.len();
+            let expression = quote
+                .iter()
+                .rev()
+                .map(|e| match e {
+                    Expression::Symbol(_) => {
+                        top -= 1;
+                        evaluator.stack.get(top).cloned().ok_or(RuntimeError)
+                    }
+                    _ => Ok(e.clone()),
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .map(|mut q| {
+                    q.reverse();
+                    Expression::Quote(Quote::from(q))
+                })
+                .inspect_err(|_| {
+                    evaluator.stack.extend_from_slice(&[
+                        Expression::Quote(quote),
+                        Symbol::stack_underflow().into(),
+                    ]);
+                })?;
+
+            evaluator.stack.truncate(top);
+            evaluator.stack.push(expression);
+            Ok(())
+        }
+        Some(expression) => {
+            evaluator
+                .stack
+                .extend_from_slice(&[expression, Symbol::type_error().into()]);
+
+            Err(RuntimeError)
+        }
+        None => {
+            evaluator.stack.push(Symbol::stack_underflow().into());
+            Err(RuntimeError)
+        }
+    }
+}

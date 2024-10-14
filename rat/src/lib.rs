@@ -24,7 +24,7 @@ pub mod dictionary;
 pub mod error;
 pub mod evaluate;
 pub mod evaluator;
-pub mod locution;
+pub mod identifier;
 pub mod parser;
 pub mod word;
 
