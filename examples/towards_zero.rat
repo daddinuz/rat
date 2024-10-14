@@ -1,13 +1,13 @@
-: std @ rat\std ;
+: std & rat/std ;
 
-: small? ← 1 lt ;
+: small? = 1 lt? ;
 
 # with recursion
-: f ← std\over small? [pop] [[dup decr] dip dup i] if-else ;
+: f = std/over small? [pop] [[dup decr] dip dup i] if-else ;
 10 [f] f
 
 # with combinators
-: f ← [dup small?] [] [dup decr] [] linrec ;
+: f = [dup small?] [] [dup decr] [] linrec ;
 10 f
 
 show

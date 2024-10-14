@@ -1,0 +1,4 @@
+: ^new = [$first-name $last-name $age] bind ;
+: ^first-name = 0 at ;
+: ^last-name = 1 at ;
+: ^age = 2 at ;

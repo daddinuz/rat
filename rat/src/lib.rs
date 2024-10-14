@@ -24,7 +24,7 @@ pub mod dictionary;
 pub mod error;
 pub mod evaluate;
 pub mod evaluator;
-pub mod locution;
+pub mod identifier;
 pub mod parser;
 pub mod word;
 
@@ -59,6 +59,9 @@ mod test {
     use crate::integer::Integer;
     use crate::symbol::Symbol;
     use crate::verb::Verb;
+
+    use std::path::Path;
+    use std::process::Command;
 
     #[test]
     fn it_works1() {
@@ -151,6 +154,27 @@ mod test {
                 Expression::Integer(Integer(42)),
                 Expression::Integer(Integer(42))
             ]
+        );
+    }
+
+    #[test]
+    fn word_and_grammar_are_aligned() {
+        let grammar_path = Path::new(env!("CARGO_WORKSPACE_DIR")).join("rat/src/grammar.pest");
+        let word_path = Path::new(env!("CARGO_WORKSPACE_DIR")).join("rat/src/word.rs");
+        let output = Command::new("md5sum")
+            .arg(&grammar_path)
+            .arg(&word_path)
+            .output()
+            .unwrap();
+
+        assert_eq!(
+            &output.stdout,
+            format!(
+                "c55d29c3dd9298a203dfc945d9c238cc  {}\nab5aa40ceddd0bc08fbf445cd9fe054e  {}\n",
+                grammar_path.display(),
+                word_path.display()
+            )
+            .as_bytes()
         );
     }
 }

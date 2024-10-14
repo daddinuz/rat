@@ -1,2 +1,2 @@
-: fib ← [dup 3 lt] [pop 1] [decr dup decr] [add] binrec ;
+: fib = [dup 3 lt?] [pop 1] [decr dup decr] [add] binrec ;
 30 fib say

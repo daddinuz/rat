@@ -31,6 +31,14 @@ impl FromIterator<Expression> for Quote {
     }
 }
 
+impl From<Vec<Expression>> for Quote {
+    fn from(value: Vec<Expression>) -> Self {
+        Self {
+            inner: Some(Arc::new(value)),
+        }
+    }
+}
+
 impl<const N: usize> From<[Expression; N]> for Quote {
     fn from(value: [Expression; N]) -> Self {
         Self::from_iter(value)

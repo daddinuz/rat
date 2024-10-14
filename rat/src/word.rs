@@ -25,36 +25,19 @@ impl ToOwned for Word {
 
 impl Word {
     pub(crate) const fn is_valid(bytes: &[u8], start: usize, end: usize) -> bool {
-        if !(start < end && start < bytes.len() && end <= bytes.len()) {
+        if !(start < end
+            && start < bytes.len()
+            && end <= bytes.len()
+            && bytes[start].is_ascii_alphabetic())
+        {
             return false;
         }
 
-        let mut i = start;
-
+        let mut i = start + 1;
         while i < end {
             let c = bytes[i];
 
-            if !(c == b'-' || c.is_ascii_digit() || c == b'_') {
-                break;
-            }
-
-            i += 1;
-        }
-
-        while i < end {
-            let c = bytes[i];
-
-            if !c.is_ascii_alphabetic() {
-                break;
-            }
-
-            i += 1;
-        }
-
-        while i < end {
-            let c = bytes[i];
-
-            if !(c == b'-' || c.is_ascii_alphanumeric() || c == b'_') {
+            if !(c.is_ascii_alphanumeric() || c == b'-' || c == b'_') {
                 break;
             }
 
