@@ -60,6 +60,9 @@ mod test {
     use crate::symbol::Symbol;
     use crate::verb::Verb;
 
+    use std::path::Path;
+    use std::process::Command;
+
     #[test]
     fn it_works1() {
         let mut evaluator = Evaluator::default();
@@ -151,6 +154,27 @@ mod test {
                 Expression::Integer(Integer(42)),
                 Expression::Integer(Integer(42))
             ]
+        );
+    }
+
+    #[test]
+    fn word_and_grammar_are_aligned() {
+        let grammar_path = Path::new(env!("CARGO_WORKSPACE_DIR")).join("rat/src/grammar.pest");
+        let word_path = Path::new(env!("CARGO_WORKSPACE_DIR")).join("rat/src/word.rs");
+        let output = Command::new("md5sum")
+            .arg(&grammar_path)
+            .arg(&word_path)
+            .output()
+            .unwrap();
+
+        assert_eq!(
+            &output.stdout,
+            format!(
+                "4157267b6044a122719d246a9dcde1da  {}\nab5aa40ceddd0bc08fbf445cd9fe054e  {}\n",
+                grammar_path.display(),
+                word_path.display()
+            )
+            .as_bytes()
         );
     }
 }
