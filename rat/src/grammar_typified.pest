@@ -1,0 +1,107 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+Program = _{
+    SOI ~ (Statement | Expression)* ~ EOI
+}
+
+Statement = {
+    (Define | Import)
+}
+
+Define = {
+    // equal sign is optional for backward compatibility with forth
+    ":" ~ Export? ~ Word ~ Signature ~ "="? ~ Expression+ ~ ";"
+}
+
+Import = {
+    ":" ~ Export? ~ Word ~ "&" ~ Identifier ~ ";"
+}
+
+Export = @{
+    ("^" | "↑")
+}
+
+Word = @{
+    ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "-" | "_")* ~ ("!" | "?")?
+}
+
+Identifier = @{
+    Word ~ ("/" ~ Word)*
+}
+
+Expression = {
+    (Boolean | Decimal | Integer | Quote | String | Symbol)
+  | /* actually not part of expression */
+  Identifier
+}
+
+Boolean = @{
+    ("⊥" | "⊤")
+}
+
+Decimal = @{
+    ("+" | "-")? ~ ("∞" | "0.NaN" | (((ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) | "0") ~ ((^"e" ~ ("+" | "-") ~ ASCII_DIGIT+) | "." ~ ASCII_DIGIT* ~ (^"e" ~ ("+" | "-") ~ ASCII_DIGIT+) | "." ~ ASCII_DIGIT+)))
+}
+
+Integer = @{
+    ("+" | "-")? ~ ((ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) | "0")
+}
+
+Quote = {
+    "[" ~ Expression* ~ "]"
+}
+
+String = ${
+    "\"" ~ UnicodeScalarValue* ~ "\""
+}
+
+UnicodeScalarValue = @{
+    (!("\"" | "\\" | NEWLINE) ~ ANY | "\\" ~ ("\"" | "'" | "\\" | "n" | "r" | "t" | ("u{" ~ ASCII_HEX_DIGIT{1, 4} ~ "}")))
+}
+
+Symbol = ${
+    "$" ~ (Identifier | String)
+}
+
+Signature = {
+    "(" ~ Pattern ~ "--" ~ Pattern ~ ")"
+}
+
+Pattern = {
+    PatternItem*
+}
+
+PatternItem = _{
+    (Slice | Variadic | Type)
+}
+
+Slice = ${
+    ".." ~ TypeName
+}
+
+Variadic = ${
+    Type ~ "*"
+}
+
+Type = !{
+    (Signature | Tuple | TypeParameter | TypeName)
+}
+
+Tuple = {
+    "[" ~ PatternItem* ~ "]"
+}
+
+TypeParameter = ${
+    "'" ~ TypeName
+}
+
+TypeName = @{
+    ASCII_ALPHA+
+}
+
+WHITESPACE = _{ NEWLINE | "\t" | " " }
+COMMENT    = _{ "#" ~ (!NEWLINE ~ ANY)* }
