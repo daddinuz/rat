@@ -157,13 +157,13 @@ pub enum Origin<'a> {
 
 const _: [(); 16] = [(); std::mem::size_of::<Origin>()];
 
-impl<'a> Origin<'a> {
+impl Origin<'_> {
     pub fn display(&self) -> impl Display + '_ {
         self
     }
 }
 
-impl<'a> Display for Origin<'a> {
+impl Display for Origin<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Origin::Path(path) => path.display().fmt(f),

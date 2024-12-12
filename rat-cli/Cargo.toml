@@ -16,8 +16,8 @@ rat = { path = "../rat" }
 
 [dependencies]
 rat = { path = "../rat" }
-rustyline = { version = "14", features = ["derive"] }
-rustyline-derive = "0.10"
+rustyline = { version = "15", features = ["derive"] }
+rustyline-derive = "0.11"
 
 [[bin]]
 name = "rat"

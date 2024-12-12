@@ -138,11 +138,11 @@ impl<'a> Iterator for Iter<'a> {
         self.delegate.count()
     }
 
-    fn last(self) -> Option<Self::Item>
+    fn last(mut self) -> Option<Self::Item>
     where
         Self: Sized,
     {
-        self.delegate.last()
+        self.delegate.next_back()
     }
 
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
@@ -150,15 +150,15 @@ impl<'a> Iterator for Iter<'a> {
     }
 }
 
-impl<'a> std::iter::FusedIterator for Iter<'a> {}
+impl std::iter::FusedIterator for Iter<'_> {}
 
-impl<'a> ExactSizeIterator for Iter<'a> {
+impl ExactSizeIterator for Iter<'_> {
     fn len(&self) -> usize {
         self.delegate.len()
     }
 }
 
-impl<'a> DoubleEndedIterator for Iter<'a> {
+impl DoubleEndedIterator for Iter<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.delegate.next_back()
     }
@@ -196,11 +196,11 @@ impl Iterator for IntoIter {
         self.delegate.count()
     }
 
-    fn last(self) -> Option<Self::Item>
+    fn last(mut self) -> Option<Self::Item>
     where
         Self: Sized,
     {
-        self.delegate.last()
+        self.delegate.next_back()
     }
 
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
