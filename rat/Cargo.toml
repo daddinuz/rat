@@ -8,11 +8,11 @@ keywords = ["rat", "rust", "programming-language", "concatenative", "concurrency
 license = "MPL-2.0"
 name = "rat"
 repository = "https://github.com/daddinuz/rat"
-rust-version = "1.80"
+rust-version = "1.81"
 version = "0.1.0"
 
 [dependencies]
-dirs = "5"
-pest = "2"
-pest_derive = "2"
-ustr = "1"
+dirs = { version = "6", default-features = false }
+pest = { version = "2", default-features = false, features = ["std"] }
+pest_derive = { version = "2", default-features = false, features = ["std"] }
+ustr = { version = "1", default-features = false }
