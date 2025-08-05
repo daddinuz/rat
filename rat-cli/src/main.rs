@@ -7,29 +7,32 @@
 mod error;
 
 use std::env;
-use std::fmt::Write;
+use std::fmt::Write as FmtWrite;
 use std::fs::{File, OpenOptions};
-use std::io::{ErrorKind, Read};
+use std::io::{self, ErrorKind, Read, Write as IoWrite};
 use std::path::{Path, PathBuf};
 
 use rustyline::error::ReadlineError;
 use rustyline::highlight::MatchingBracketHighlighter;
 use rustyline::validate::MatchingBracketValidator;
-use rustyline::{Cmd, ConditionalEventHandler, Editor, Event, EventContext, EventHandler};
-use rustyline::{Helper, KeyEvent, RepeatCount};
+use rustyline::{
+    Cmd, ConditionalEventHandler, Editor, Event, EventContext, EventHandler, Helper, KeyEvent,
+    RepeatCount,
+};
 use rustyline_derive::{Completer, Highlighter, Hinter, Validator};
 
-use rat::evaluate::Evaluate;
-use rat::evaluator::Evaluator;
+use rat::context::Context;
 use rat::parser::{Origin, Parser};
+use rat::quote::Quote;
 
 use error::{CliError, Consume, Report};
 
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const LIB_VERSION: &str = rat::VERSION;
+pub const CLI_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub fn main() -> Result<(), CliError> {
-    let mut parser = Parser::with_prelude();
-    let mut evaluator = Evaluator::new();
+    let mut parser = Parser::new(rat::prelude::prelude());
+    let mut context = Context::new();
     let mut source_paths = Vec::new();
     let mut source_buffer = String::new();
     let mut interactive = false;
@@ -50,24 +53,6 @@ pub fn main() -> Result<(), CliError> {
             Ok(())
         })?;
 
-    for path in source_paths.iter() {
-        let mut file = File::open(path)?;
-
-        source_buffer.clear();
-        file.read_to_string(&mut source_buffer)?;
-
-        match interpret(
-            Origin::Path(Path::new(path)),
-            &source_buffer,
-            &mut parser,
-            &mut evaluator,
-        ) {
-            Err(error) if interactive => error.report(),
-            error @ Err(_) => return error,
-            _ => (),
-        }
-    }
-
     if !interactive && source_paths.is_empty() {
         if show_usage {
             println!("{USAGE}");
@@ -80,18 +65,24 @@ pub fn main() -> Result<(), CliError> {
         }
     }
 
+    for path in source_paths.iter() {
+        source_buffer.clear();
+        read_file_to_string(path, &mut source_buffer)?;
+
+        let origin = Origin::Path(Path::new(path));
+        let quote = parser.parse(origin, &source_buffer).map(Quote::from)?;
+
+        eval(origin, &quote, &mut context, interactive)?;
+    }
+
     if interactive || source_paths.is_empty() {
-        repl(&mut parser, &mut evaluator, source_paths.is_empty())?;
+        repl(&mut parser, &mut context, source_paths.is_empty())?;
     }
 
     Ok(())
 }
 
-fn repl(
-    parser: &mut Parser,
-    evaluator: &mut Evaluator,
-    show_greeting: bool,
-) -> Result<(), CliError> {
+fn repl(parser: &mut Parser, context: &mut Context, show_greeting: bool) -> Result<(), CliError> {
     let history_file_path = history_file_path();
 
     OpenOptions::new()
@@ -116,10 +107,12 @@ fn repl(
 
     if show_greeting {
         println!(
-            "{}{NEWLINE}Rat {} CLI {}{NEWLINE}Enter Ctrl+D to exit.{NEWLINE}This software is licensed under MPL-2.0 terms, visit https://www.mozilla.org/MPL/2.0/ for more information.{NEWLINE}",
-            REPL_GREET,
-            rat::VERSION,
-            VERSION,
+            r###"{REPL_GREET}
+Rat {LIB_VERSION} CLI {CLI_VERSION}, enter Ctrl+D to exit
+
+This software is licensed under MPL-2.0 terms
+Visit https://www.mozilla.org/MPL/2.0/ for info
+"###
         );
     }
 
@@ -137,9 +130,10 @@ fn repl(
                     .map_err(Report::report)
                     .consume();
 
-                interpret(Origin::Unknown, line, parser, evaluator)
-                    .map_err(Report::report)
-                    .consume();
+                match parser.parse(Origin::Unknown, line).map(Quote::from) {
+                    Ok(quote) => eval(Origin::Unknown, &quote, context, true)?,
+                    Err(error) => error.report(),
+                }
             }
             Err(ReadlineError::Interrupted | ReadlineError::Eof) => break,
             Err(error) => return Err(error.into()),
@@ -154,25 +148,75 @@ fn repl(
     Ok(())
 }
 
-fn interpret(
+fn eval(
     origin: Origin,
-    source: &str,
-    parser: &mut Parser,
-    evaluator: &mut Evaluator,
+    quote: &Quote,
+    context: &mut Context,
+    interactive: bool,
 ) -> Result<(), CliError> {
-    let program = parser.parse(origin, source)?;
+    if let Err(effect) = context.unquote(quote) {
+        let stack = std::mem::take(&mut context.stack);
+        let continuation = std::mem::take(&mut context.continuation);
+        let mut stdout = io::stdout().lock();
 
-    evaluator.evaluate(program.into_iter()).map_err(|effect| {
-        evaluator.stack.iter().fold(
-            format!("unhandled effect: {effect:?}{NEWLINE}stack (top rightmost):"),
-            |mut acc, exp| {
-                let _ = write!(acc, " {exp:?}");
-                acc
-            },
+        if !interactive {
+            return Err(format!(
+                r###"
+File: '{origin}' unhandled effect: {effect:?}
+    Q: {quote:?}
+    K: {continuation:?}
+    S:{} (top)
+"###,
+                stack.iter().try_fold(String::new(), |mut acc, word| {
+                    write!(acc, " {word:?}").map(|_| acc)
+                })?
+            )
+            .into());
+        }
+
+        write!(
+            stdout,
+            r###"
+File: '{origin}' unhandled effect: {effect:?}
+    Q: {quote:?}
+    K: {continuation:?}
+    S:{} (top)
+
+The current continuation will be dropped.
+Do you want to keep the current stack? [y/n]
+> "###,
+            stack.iter().try_fold(String::new(), |mut acc, word| {
+                write!(acc, " {word:?}").map(|_| acc)
+            })?
         )
-    })?;
+        .and_then(|_| stdout.flush())?;
+
+        let mut ans = String::new();
+        loop {
+            io::stdin().read_line(&mut ans)?;
+            ans.make_ascii_lowercase();
+
+            match ans.trim() {
+                "y" | "yes" => {
+                    context.stack.extend(stack);
+                    break;
+                }
+                "n" | "no" => break,
+                _ => ans.clear(),
+            }
+
+            write!(stdout, "> ").and_then(|_| stdout.flush())?;
+        }
+
+        writeln!(stdout)?;
+    }
 
     Ok(())
+}
+
+pub fn read_file_to_string<P: AsRef<Path>>(path: P, string: &mut String) -> io::Result<usize> {
+    let mut file = File::open(path)?;
+    file.read_to_string(string)
 }
 
 #[derive(Default, Helper, Completer, Highlighter, Hinter, Validator)]
@@ -205,16 +249,16 @@ fn history_file_path() -> PathBuf {
 }
 
 static REPL_PROMPT: &str = "rat> ";
-static REPL_GREET: &str = r"
+static REPL_GREET: &str = r###"
 ______      _   
 | ___ \    | |  
 | |_/ /__ _| |_ 
 |    // _` | __|
 | |\ \ (_| | |_ 
 \_| \_\__,_|\__|
-";
+"###;
 
-static USAGE: &str = r"
+static USAGE: &str = r###"
 Usage:
   rat [FILE...] [-i] [-h] [--license]
 
@@ -222,7 +266,7 @@ Options:
   -h --help         show this message
   -i --interactive  interactive session
      --license      show copyright notice
-";
+"###;
 
 static LICENSE: &str = r###"
 Mozilla Public License Version 2.0
@@ -599,9 +643,3 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   This Source Code Form is "Incompatible With Secondary Licenses", as
   defined by the Mozilla Public License, v. 2.0.
 "###;
-
-#[cfg(windows)]
-const NEWLINE: &str = "\r\n";
-
-#[cfg(not(windows))]
-const NEWLINE: &str = "\n";

@@ -2,10 +2,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-: std & rat/std ;
+:define ^abs = 0 lt? [neg] if ;
 
-: ^abs = dup negative? [neg] if ;
-: ^halve = 1 shr ;
-: ^double = 1 shl ;
-: ^square = dup mul ;
-: ^pow = [dup quote [mul] cat] dip std/times ;
+:define ^halve = 1 shr ;
+:define ^double = 1 shl ;
+:define ^square = dup mul ;
+
+:define ^odd? = dup 1 and 0 gt!? ;
+:define ^even? = dup 1 and 0 eq!? ;

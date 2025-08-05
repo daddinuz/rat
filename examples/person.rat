@@ -1,4 +1,6 @@
-: ^new = [$first-name $last-name $age] bind ;
-: ^first-name = 0 at ;
-: ^last-name = 1 at ;
-: ^age = 2 at ;
+:import std rat/std ;
+
+:define ^new = [$first-name $last-name $age] dup shallow-bind ;
+:define ^first-name = 0 get ;
+:define ^last-name = 1 get ;
+:define ^age = 2 get ;

@@ -2,12 +2,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-: std & rat/std ;
-: math & rat/math ;
+:import std rat/std ;
+:import math rat/math ;
 
-: ^empty? = len zero? ;
+:define ^empty? = len 0 eq? ;
 
-: ^merge =
+:define ^merge =
 	[std/dup2 [empty?] unary2 or]
 	[dup empty? [pop] [std/popd] if-else]
 	[
@@ -20,7 +20,7 @@
 	linrec
 ;
 
-: ^mergesort =
+:define ^mergesort =
 	[dup len 1 le?]
 	[]
 	[dup len math/halve split]

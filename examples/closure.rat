@@ -1,2 +1,2 @@
-: make-adder = [$x add] bind ;
+:define make-adder = [$x add] $x shallow-bind ;
 40 2 make-adder i say

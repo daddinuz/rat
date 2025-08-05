@@ -3,20 +3,20 @@
 [package]
 authors = ["Davide Di Carlo <daddinuz@gmail.com>"]
 description = "The Rat Programming Language"
-edition = "2021"
+edition = "2024"
 keywords = ["rat", "rust", "programming-language", "concatenative", "concurrency"]
 license = "MPL-2.0"
 name = "rat-cli"
 repository = "https://github.com/daddinuz/rat"
-rust-version = "1.81"
-version = "0.1.0"
+rust-version = "1.88"
+version = "0.1.1"
 
 [build-dependencies]
-rat = { path = "../rat" }
+rat = { path = "../rat-lib" }
 
 [dependencies]
-rat = { path = "../rat" }
-rustyline = { version = "15", default-features = false, features = ["derive", "custom-bindings"] }
+rat = { path = "../rat-lib" }
+rustyline = { version = "17", default-features = false, features = ["derive", "custom-bindings", "with-file-history"] }
 rustyline-derive = { version = "0.11", default-features = false }
 
 [[bin]]

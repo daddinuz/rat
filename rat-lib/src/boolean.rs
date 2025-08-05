@@ -8,12 +8,9 @@ use std::fmt::{Debug, Display};
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
 
 use crate::codegen;
-use crate::error::RuntimeError;
-use crate::evaluate::Evaluate;
-use crate::evaluator::Evaluator;
-use crate::expression::Expression;
 
-#[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
 pub struct Boolean(pub bool);
 
 impl From<bool> for Boolean {
@@ -30,12 +27,19 @@ impl From<Boolean> for bool {
     }
 }
 
-impl Evaluate<Boolean> for &mut Evaluator {
-    type Output = Result<(), RuntimeError>;
+impl Display for Boolean {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(value) = self;
+        match value {
+            false => write!(f, "⊥"),
+            true => write!(f, "⊤"),
+        }
+    }
+}
 
-    fn evaluate(self, value: Boolean) -> Self::Output {
-        self.stack.push(Expression::Boolean(value));
-        Ok(())
+impl Debug for Boolean {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(self, f)
     }
 }
 
@@ -49,18 +53,3 @@ codegen::binary_assign_operator!(
     BitOrAssign::bitor_assign,
     BitXorAssign::bitxor_assign
 );
-
-impl Display for Boolean {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.0 {
-            false => write!(f, "⊥"),
-            true => write!(f, "⊤"),
-        }
-    }
-}
-
-impl Debug for Boolean {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(self, f)
-    }
-}

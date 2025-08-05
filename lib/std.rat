@@ -2,17 +2,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-: ^popd = swap pop ;
-: ^dupd = [dup] dip ;
-: ^swapd = [swap] dip ;
+:define ^popd = swap pop ;
+:define ^dupd = [dup] dip ;
+:define ^swapd = [swap] dip ;
+:define ^overd = [over] dip ;
 
-: ^over = dupd swap ;
-: ^overd = [over] dip ;
-
-: ^dup2 = over over ;
-
-: ^bi = [[quote] dip over [cat] dip] dip cat [i] dip i ;
-
-: ^case = swap at i ;
-
-: ^times = [dup 1 lt?] [pop pop] [[dup [i] dip] dip decr] [] linrec ;
+:define ^dup2 = over over ;

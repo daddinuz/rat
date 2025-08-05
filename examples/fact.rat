@@ -1,2 +1,2 @@
-: fact = [dup zero?] [incr] [dup decr] [mul] linrec ;
+:define fact = [1 lt?] [pop 1] [dup decr] [mul] linrec ;
 5 fact say

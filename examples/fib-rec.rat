@@ -1,0 +1,2 @@
+:define fib = [3 lt? [pop 1] [decr dup recur swap decr recur add] if-else] i ;
+37 fib say

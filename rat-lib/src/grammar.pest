@@ -9,42 +9,43 @@ Program = _{
 }
 
 Statement = {
-    (Define | Import)
+    (DefineStatement | ImportStatement)
 }
 
-Define = {
-    // equal sign is optional for backward compatibility with forth
-    ":" ~ Export? ~ Word ~ "="? ~ Expression+ ~ ";"
+DefineStatement = {
+    ":define" ~ Export? ~ Component ~ "="? ~ Expression+ ~ ";"
 }
 
-Import = {
-    ":" ~ Export? ~ Word ~ "&" ~ Identifier ~ ";"
+ImportStatement = {
+    ":import" ~ Export? ~ Component ~ Identifier ~ ";"
 }
 
 Export = @{
-    ("^" | "↑")
+    "^"
 }
 
-Word = @{
-    ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "-" | "_")* ~ ("!" | "?")?
+Component = @{
+    ASCII_ALPHA ~ ASCII_ALPHANUMERIC* ~ ("-" ~ ASCII_ALPHA ~ ASCII_ALPHANUMERIC*)* ~ "!"? ~ "?"?
 }
 
 Identifier = @{
-    Word ~ ("/" ~ Word)*
+    Component ~ ("/" ~ Component)*
 }
 
 Expression = {
-    (Boolean | Decimal | Integer | Quote | String | Symbol)
-  | /* actually not part of expression */
-  Identifier
+    (Boolean | Character | Decimal | Integer | Quote | String | Symbol | Identifier)
 }
 
 Boolean = @{
     ("⊥" | "⊤")
 }
 
+Character = ${
+    "'" ~ UnicodeScalarValue ~ "'"
+}
+
 Decimal = @{
-    ("+" | "-")? ~ ("∞" | "0.NaN" | (((ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) | "0") ~ ((^"e" ~ ("+" | "-") ~ ASCII_DIGIT+) | "." ~ ASCII_DIGIT* ~ (^"e" ~ ("+" | "-") ~ ASCII_DIGIT+) | "." ~ ASCII_DIGIT+)))
+    ("+" | "-")? ~ ("∞" | "%" | (((ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) | "0") ~ ((^"e" ~ ("+" | "-") ~ ASCII_DIGIT+) | "." ~ ASCII_DIGIT* ~ (^"e" ~ ("+" | "-") ~ ASCII_DIGIT+) | "." ~ ASCII_DIGIT+)))
 }
 
 Integer = @{
@@ -64,7 +65,7 @@ UnicodeScalarValue = @{
 }
 
 Symbol = ${
-    "$" ~ (Identifier | String)
+    "$" ~ (Component | String)
 }
 
 WHITESPACE = _{ NEWLINE | "\t" | " " }

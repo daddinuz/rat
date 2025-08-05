@@ -11,8 +11,9 @@ macro_rules! binary_operator {
                 type Output = Self;
 
                 #[inline]
-                fn $operation(self, rhs: Self) -> Self::Output {
-                    Self($trait::$operation(self.0, rhs.0))
+                fn $operation(self, Self(rhs): Self) -> Self::Output {
+                    let Self(lhs) = self;
+                    Self($trait::$operation(lhs, rhs))
                 }
             }
         )+
@@ -26,8 +27,9 @@ macro_rules! binary_assign_operator {
         $(
             impl $trait for $type {
                 #[inline]
-                fn $operation(&mut self, rhs: Self) {
-                    $trait::$operation(&mut self.0, rhs.0)
+                fn $operation(&mut self, Self(rhs): Self) {
+                    let Self(lhs) = self;
+                    $trait::$operation(lhs, rhs)
                 }
             }
         )+
@@ -44,7 +46,8 @@ macro_rules! unary_operator {
 
                 #[inline]
                 fn $operation(self) -> Self::Output {
-                    Self($trait::$operation(self.0))
+                    let Self(inner) = self;
+                    Self($trait::$operation(inner))
                 }
             }
         )+
