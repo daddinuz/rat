@@ -9,7 +9,7 @@ mod error;
 use std::env;
 use std::fmt::Write as FmtWrite;
 use std::fs::{File, OpenOptions};
-use std::io::{self, ErrorKind, Read, Write as IoWrite};
+use std::io::{self, ErrorKind, IsTerminal, Read, Write as IoWrite};
 use std::path::{Path, PathBuf};
 
 use rustyline::error::ReadlineError;
@@ -35,34 +35,58 @@ pub fn main() -> Result<(), CliError> {
     let mut context = Context::new();
     let mut source_paths = Vec::new();
     let mut source_buffer = String::new();
-    let mut interactive = false;
-    let mut show_usage = false;
-    let mut show_license = false;
+    let mut command = String::new();
+    let mut flag_help = false;
+    let mut flag_interactive = false;
+    let mut flag_license = false;
+    let mut flag_quiet = false;
+    let mut flag_version = false;
 
     env::args()
         .skip(1)
         .try_for_each(|arg| -> Result<(), CliError> {
             match arg.as_str() {
                 _ if !arg.starts_with('-') => source_paths.push(arg),
-                "-h" | "--help" => show_usage = true,
-                "-i" | "--interactive" => interactive = true,
-                "--license" => show_license = true,
+                _ if arg.starts_with("-c=") => command.push_str(&arg["-c=".len()..]),
+                _ if arg.starts_with("--command=") => command.push_str(&arg["--command=".len()..]),
+                "-h" | "--help" => flag_help = true,
+                "-i" | "--interactive" => flag_interactive = true,
+                "-l" | "--license" => flag_license = true,
+                "-q" | "--quiet" => flag_quiet = true,
+                "--version" => flag_version = true,
                 _ => return Err(CliError::from(format!("unknown option: '{arg}'"))),
             }
 
             Ok(())
         })?;
 
-    if !interactive && source_paths.is_empty() {
-        if show_usage {
-            println!("{USAGE}");
-            return Ok(());
-        }
+    flag_interactive = flag_interactive || (source_paths.is_empty() && command.is_empty());
 
-        if show_license {
-            println!("{LICENSE}");
-            return Ok(());
-        }
+    if flag_help {
+        println!("{USAGE}");
+        return Ok(());
+    }
+
+    if flag_license {
+        println!("{LICENSE}");
+        return Ok(());
+    }
+
+    if flag_version {
+        println!(" Rat\t CLI");
+        println!("{LIB_VERSION}\t{CLI_VERSION}");
+        return Ok(());
+    }
+
+    if !flag_quiet && flag_interactive && command.is_empty() && io::stdin().is_terminal() {
+        println!(
+            r###"{REPL_GREET}
+Rat {LIB_VERSION} CLI {CLI_VERSION}, enter Ctrl+D to exit.
+
+This software is licensed under MPL-2.0 terms,
+visit https://www.mozilla.org/MPL/2.0/ for info.
+"###
+        );
     }
 
     for path in source_paths.iter() {
@@ -71,18 +95,21 @@ pub fn main() -> Result<(), CliError> {
 
         let origin = Origin::Path(Path::new(path));
         let quote = parser.parse(origin, &source_buffer).map(Quote::from)?;
-
-        eval(origin, &quote, &mut context, interactive)?;
+        eval(origin, &quote, &mut context, flag_interactive)?;
     }
 
-    if interactive || source_paths.is_empty() {
-        repl(&mut parser, &mut context, source_paths.is_empty())?;
+    let origin = Origin::Unknown;
+    let quote = parser.parse(origin, &command).map(Quote::from)?;
+    eval(origin, &quote, &mut context, flag_interactive)?;
+
+    if !flag_interactive {
+        return Ok(());
     }
 
-    Ok(())
+    repl(&mut parser, &mut context)
 }
 
-fn repl(parser: &mut Parser, context: &mut Context, show_greeting: bool) -> Result<(), CliError> {
+fn repl(parser: &mut Parser, context: &mut Context) -> Result<(), CliError> {
     let history_file_path = history_file_path();
 
     OpenOptions::new()
@@ -104,17 +131,6 @@ fn repl(parser: &mut Parser, context: &mut Context, show_greeting: bool) -> Resu
         .load_history(&history_file_path)
         .map_err(Report::report)
         .consume();
-
-    if show_greeting {
-        println!(
-            r###"{REPL_GREET}
-Rat {LIB_VERSION} CLI {CLI_VERSION}, enter Ctrl+D to exit
-
-This software is licensed under MPL-2.0 terms
-Visit https://www.mozilla.org/MPL/2.0/ for info
-"###
-        );
-    }
 
     loop {
         match editor.readline(REPL_PROMPT) {
@@ -259,13 +275,23 @@ ______      _
 "###;
 
 static USAGE: &str = r###"
-Usage:
-  rat [FILE...] [-i] [-h] [--license]
+Usage: rat [File | Option]...
 
-Options:
-  -h --help         show this message
-  -i --interactive  interactive session
-     --license      show copyright notice
+File:
+  Any argument not starting with '-'.
+  Files get executed in order of appearance.
+
+Option:
+  -c --command      Execute program passed as argument.
+                    This option MUST be immediately followed by '='
+                    sign without any space, e.g. `rat -c='42 say'`.
+                    Commands get executed in order of appearance
+                    but after any source file.
+  -h --help         Show this message.
+  -l --license      Show software license.
+  -i --interactive  Start an interactive session.
+  -q --quiet        Disable the greeting message.
+     --version      Display the language and CLI version.
 "###;
 
 static LICENSE: &str = r###"
