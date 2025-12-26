@@ -191,7 +191,31 @@ impl<I: SliceIndex<[Word]>> IndexMut<I> for Quote {
 
 impl Debug for Quote {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self[..] {
+        let adapter = FmtAdapter(self.as_slice());
+        Debug::fmt(&adapter, f)
+    }
+}
+
+impl Display for Quote {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let adapter = FmtAdapter(self.as_slice());
+        Display::fmt(&adapter, f)
+    }
+}
+
+#[inline]
+pub fn fmt(words: &'_ [Word]) -> FmtAdapter<'_> {
+    FmtAdapter(words)
+}
+
+pub struct FmtAdapter<'a>(&'a [Word]);
+
+impl Debug for FmtAdapter<'_> {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(slice) = self;
+        match slice {
             [] => write!(f, "[]"),
             [w] => write!(f, "[{w:?}]"),
             [w, rest @ ..] => {
@@ -205,7 +229,7 @@ impl Debug for Quote {
     }
 }
 
-impl Display for Quote {
+impl Display for FmtAdapter<'_> {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Debug::fmt(self, f)

@@ -7,7 +7,6 @@
 mod error;
 
 use std::env;
-use std::fmt::Write as FmtWrite;
 use std::fs::{File, OpenOptions};
 use std::io::{self, ErrorKind, IsTerminal, Read, Write as IoWrite};
 use std::path::{Path, PathBuf};
@@ -23,7 +22,7 @@ use rustyline_derive::{Completer, Highlighter, Hinter, Validator};
 
 use rat::context::Context;
 use rat::parser::{Origin, Parser};
-use rat::quote::Quote;
+use rat::quote::{self, Quote};
 
 use error::{CliError, Consume, Report};
 
@@ -175,17 +174,16 @@ fn eval(
         let continuation = std::mem::take(&mut context.continuation);
         let mut stdout = io::stdout().lock();
 
+        let stack_fmt_adapter = quote::fmt(stack.as_slice());
+
         if !interactive {
             return Err(format!(
                 r###"
 File: '{origin}' unhandled effect: {effect:?}
     Q: {quote:?}
     K: {continuation:?}
-    S:{} (top)
-"###,
-                stack.iter().try_fold(String::new(), |mut acc, word| {
-                    write!(acc, " {word:?}").map(|_| acc)
-                })?
+    S: {stack_fmt_adapter}
+"###
             )
             .into());
         }
@@ -196,14 +194,11 @@ File: '{origin}' unhandled effect: {effect:?}
 File: '{origin}' unhandled effect: {effect:?}
     Q: {quote:?}
     K: {continuation:?}
-    S:{} (top)
+    S: {stack_fmt_adapter}
 
 The current continuation will be dropped.
 Do you want to keep the current stack? [y/n]
-> "###,
-            stack.iter().try_fold(String::new(), |mut acc, word| {
-                write!(acc, " {word:?}").map(|_| acc)
-            })?
+> "###
         )
         .and_then(|_| stdout.flush())?;
 

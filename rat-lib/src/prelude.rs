@@ -17,7 +17,7 @@ use crate::definition::Definition;
 use crate::dictionary::Dictionary;
 use crate::integer::Integer;
 use crate::object::Object;
-use crate::quote::Quote;
+use crate::quote::{self, Quote};
 use crate::string::String;
 use crate::symbol::Symbol;
 use crate::verb::Verb;
@@ -1662,26 +1662,12 @@ fn binrec_aux(
 pub fn dbg(context: &mut Context) -> Result<(), Symbol> {
     let mut stdout = io::stdout().lock();
 
-    writeln!(stdout, "K: {}", context.continuation).map_err(|_| {
+    writeln!(stdout, "K: {:?}", context.continuation).map_err(|_| {
         context.stack.push(Word::Symbol(Symbol::IOError));
         Symbol::Throw
     })?;
 
-    write!(stdout, "S:").map_err(|_| {
-        context.stack.push(Word::Symbol(Symbol::IOError));
-        Symbol::Throw
-    })?;
-
-    context
-        .stack
-        .iter()
-        .try_for_each(|word| write!(stdout, " {word:?}"))
-        .map_err(|_| {
-            context.stack.push(Word::Symbol(Symbol::IOError));
-            Symbol::Throw
-        })?;
-
-    writeln!(stdout, " (top)").map_err(|_| {
+    writeln!(stdout, "S: {:?}", quote::fmt(context.stack.as_slice())).map_err(|_| {
         context.stack.push(Word::Symbol(Symbol::IOError));
         Symbol::Throw
     })
