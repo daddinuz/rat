@@ -1,2 +1,2 @@
 :define f = [1 lt?] [pop] [decr dup] [] linrec ;
-10 f stack/show
+10 f dbg

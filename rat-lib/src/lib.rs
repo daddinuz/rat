@@ -6,7 +6,6 @@
 
 mod codegen;
 
-pub mod r#abstract;
 pub mod boolean;
 pub mod character;
 pub mod component;
