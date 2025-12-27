@@ -2015,7 +2015,7 @@ static STACK_DICTIONARY: [(&Component, StaticDefinition); 3] = [
     ),
 ];
 
-pub fn prelude() -> Arc<Dictionary> {
+pub fn build() -> Arc<Dictionary> {
     PRELUDE
         .iter()
         .map(|(component, definition)| ((*component).into(), (*definition).into()))

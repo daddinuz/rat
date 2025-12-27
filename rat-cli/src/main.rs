@@ -6,11 +6,12 @@
 
 mod error;
 
-use std::env;
 use std::fs::{File, OpenOptions};
 use std::io::{self, ErrorKind, IsTerminal, Read, Write as IoWrite};
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 
+use include_dir::{Dir, DirEntry, include_dir};
 use rustyline::error::ReadlineError;
 use rustyline::highlight::MatchingBracketHighlighter;
 use rustyline::validate::MatchingBracketValidator;
@@ -26,12 +27,12 @@ use rat::quote::{self, Quote};
 
 use error::{CliError, Consume, Report};
 
-pub const LIB_VERSION: &str = rat::VERSION;
-pub const CLI_VERSION: &str = env!("CARGO_PKG_VERSION");
+const LIB_VERSION: &str = rat::VERSION;
+const CLI_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub fn main() -> Result<(), CliError> {
-    let mut parser = Parser::new(rat::prelude::prelude());
-    let mut context = Context::new();
+static STDLIB: Dir = include_dir!("$CARGO_MANIFEST_DIR/../rat-stdlib");
+
+fn main() -> Result<(), CliError> {
     let mut source_paths = Vec::new();
     let mut source_buffer = String::new();
     let mut command = String::new();
@@ -39,6 +40,7 @@ pub fn main() -> Result<(), CliError> {
     let mut flag_interactive = false;
     let mut flag_license = false;
     let mut flag_quiet = false;
+    let mut flag_install_stdlib = false;
     let mut flag_version = false;
 
     env::args()
@@ -52,6 +54,7 @@ pub fn main() -> Result<(), CliError> {
                 "-i" | "--interactive" => flag_interactive = true,
                 "-l" | "--license" => flag_license = true,
                 "-q" | "--quiet" => flag_quiet = true,
+                "--install-stdlib" => flag_install_stdlib = true,
                 "--version" => flag_version = true,
                 _ => return Err(CliError::from(format!("unknown option: '{arg}'"))),
             }
@@ -60,6 +63,22 @@ pub fn main() -> Result<(), CliError> {
         })?;
 
     flag_interactive = flag_interactive || (source_paths.is_empty() && command.is_empty());
+
+    if flag_install_stdlib || !rat::stdlib_dir().exists() {
+        if !flag_quiet {
+            println!("Installing rat's stdlib to {:?}...", rat::stdlib_dir());
+        }
+
+        if rat::stdlib_dir().exists() {
+            fs::remove_dir_all(rat::stdlib_dir())?;
+        }
+
+        extract_dir(&STDLIB, rat::stdlib_dir())?;
+
+        if !flag_quiet {
+            println!("Rat's stdlib installed");
+        }
+    }
 
     if flag_help {
         println!("{USAGE}");
@@ -76,6 +95,10 @@ pub fn main() -> Result<(), CliError> {
         println!("{LIB_VERSION}\t{CLI_VERSION}");
         return Ok(());
     }
+
+    let prelude = rat::prelude::build();
+    let mut parser = Parser::new(prelude);
+    let mut context = Context::new();
 
     if !flag_quiet && flag_interactive && command.is_empty() && io::stdin().is_terminal() {
         println!(
@@ -225,7 +248,26 @@ Do you want to keep the current stack? [y/n]
     Ok(())
 }
 
-pub fn read_file_to_string<P: AsRef<Path>>(path: P, string: &mut String) -> io::Result<usize> {
+fn extract_dir(dir: &Dir, target: &Path) -> io::Result<()> {
+    fs::create_dir_all(target)?;
+
+    for entry in dir.entries() {
+        match entry {
+            DirEntry::File(file) => {
+                let path = target.join(file.path());
+                if let Some(parent) = path.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                fs::write(path, file.contents())?;
+            }
+            DirEntry::Dir(subdir) => extract_dir(subdir, target)?,
+        }
+    }
+
+    Ok(())
+}
+
+fn read_file_to_string<P: AsRef<Path>>(path: P, string: &mut String) -> io::Result<usize> {
     let mut file = File::open(path)?;
     file.read_to_string(string)
 }

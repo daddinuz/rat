@@ -16,7 +16,6 @@ use std::string::String as StdString;
 use std::sync::Arc;
 use std::{env, fs};
 
-use crate::VERSION;
 use crate::boolean::Boolean;
 use crate::character::Character;
 use crate::component::{Component, OwnedComponent};
@@ -91,7 +90,7 @@ impl Parser {
 
         let mut path = if identifier.as_str().starts_with("rat/") {
             components.next();
-            crate::home_dir().join("lib").join(VERSION)
+            crate::stdlib_dir().to_path_buf()
         } else {
             env::current_dir()
                 .map_err(|error| ImportError::new(format!("`{identifier:?}` {error}")))?

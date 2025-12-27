@@ -31,15 +31,21 @@ use std::sync::LazyLock;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[allow(deprecated)]
 pub fn home_dir() -> &'static Path {
     static HOME_DIR: LazyLock<Box<Path>> = LazyLock::new(|| {
-        let mut home_dir = env::home_dir().unwrap_or_default();
-        home_dir.push(".rat");
-        home_dir.into()
+        env::home_dir()
+            .unwrap_or_default()
+            .join(".rat")
+            .join(VERSION)
+            .into()
     });
 
     &HOME_DIR
+}
+
+pub fn stdlib_dir() -> &'static Path {
+    static STDLIB_DIR: LazyLock<Box<Path>> = LazyLock::new(|| home_dir().join("stdlib").into());
+    &STDLIB_DIR
 }
 
 #[allow(dead_code)]
