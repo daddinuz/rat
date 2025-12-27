@@ -52,6 +52,10 @@ impl Parser {
         &self.dictionary
     }
 
+    pub fn prelude(&self) -> &Dictionary {
+        &self.prelude
+    }
+
     pub fn parse(&mut self, origin: Origin, source: &str) -> Result<Vec<Word>, ParseError> {
         let pairs = Grammar::parse(Rule::Program, source).map_err(with_origin(origin))?;
         let mut program = Vec::new();
@@ -70,9 +74,9 @@ impl Parser {
 
     fn import(
         &mut self,
+        visibility: Visibility,
         component: &Component,
         identifier: &Identifier,
-        visibility: Visibility,
     ) -> Result<(), ImportError> {
         if let Some(dictionary) = self.cache.get(identifier) {
             self.dictionary.insert(
@@ -421,7 +425,7 @@ fn parse_import_statement(
     let identifier = parse_identifier(origin, pairs.next().unwrap())?;
 
     parser
-        .import(component, identifier, visibility)
+        .import(visibility, component, identifier)
         .map_err(|e| parse_error(origin, span, e))
 }
 
