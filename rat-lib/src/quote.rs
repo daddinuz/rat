@@ -50,6 +50,13 @@ impl Quote {
     }
 
     #[inline]
+    pub fn append(&mut self, other: &mut Self) {
+        let Self(self_inner) = self;
+        let Self(other_inner) = other;
+        self_inner.append(other_inner);
+    }
+
+    #[inline]
     pub fn extend_from_slice(&mut self, slice: &[Word]) {
         let Self(inner) = self;
         inner.extend_from_slice(slice);

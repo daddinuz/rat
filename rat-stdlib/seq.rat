@@ -5,15 +5,24 @@
 :import std rat/std ;
 :import math rat/math ;
 
-:define ^empty? = len 0 eq? ;
+:define ^empty? = len 0 eq!? ;
+
+:define ^first! = 0 get! ;
+:define ^last! = -1 get! ;
+
+:define ^first = 0 get ;
+:define ^last = -1 get ;
+
+:define ^suffix! = suffix std/popd ;
+:define ^prefix! = prefix std/popd ;
 
 :define ^merge =
-	[std/dup2 [empty?] unary2 or]
-	[dup empty? [pop] [std/popd] if-else]
+	[[empty?] unary2 std/swapd or]
+	[cat]
 	[
-		std/dup2 [first] unary2 lt?
-		[[[first quote] [suffix] std/bi] dip]
-		[[first quote] [suffix] std/bi std/swapd]
+		[first] unary2 std/swapd ge!?
+		[1 split std/swapd]
+		[[1 split] dip]
 		if-else
 	]
 	[cat]
@@ -21,9 +30,9 @@
 ;
 
 :define ^mergesort =
-	[dup len 1 le?]
+	[len 1 le!?]
 	[]
-	[dup len math/halve split]
+	[len math/halve split]
 	[merge]
 	binrec
 ;

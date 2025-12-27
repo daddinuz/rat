@@ -1518,6 +1518,25 @@ pub fn catch(context: &mut Context) -> Result<(), Symbol> {
     }
 }
 
+pub fn unary2(context: &mut Context) -> Result<(), Symbol> {
+    match context.stack[..] {
+        [.., _, _, Word::Object(ref object)] if object.is::<Quote>() => {
+            let quote = context.stack.pop().and_then(Word::into_object).unwrap();
+            let quote = quote.downcast_ref::<Quote>().unwrap();
+
+            let backup = context.stack.pop().unwrap();
+
+            context.apply(quote)?;
+            context.stack.push(backup);
+            context.apply(quote)
+        }
+        _ => {
+            context.stack.push(Word::Symbol(Symbol::LayoutError));
+            Err(Symbol::Throw)
+        }
+    }
+}
+
 pub fn linrec(context: &mut Context) -> Result<(), Symbol> {
     match context.stack[..] {
         [
@@ -1697,7 +1716,7 @@ impl From<StaticDefinition<'_>> for Definition {
     }
 }
 
-static PRELUDE: [(&Component, StaticDefinition); 75] = [
+static PRELUDE: [(&Component, StaticDefinition); 76] = [
     (
         Component::try_from_literal("nan").unwrap(),
         StaticDefinition::Expression(&[Word::Decimal(Decimal::NAN)]),
@@ -1985,6 +2004,10 @@ static PRELUDE: [(&Component, StaticDefinition); 75] = [
     (
         Component::try_from_literal("catch").unwrap(),
         StaticDefinition::Expression(&[Word::Verb(Verb(catch))]),
+    ),
+    (
+        Component::try_from_literal("unary2").unwrap(),
+        StaticDefinition::Expression(&[Word::Verb(Verb(unary2))]),
     ),
     (
         Component::try_from_literal("linrec").unwrap(),
