@@ -95,6 +95,11 @@ impl Dictionary {
     }
 
     #[inline]
+    pub fn components(&self) -> impl Iterator<Item = &OwnedComponent> {
+        self.definitions.keys()
+    }
+
+    #[inline]
     pub fn iter(&self) -> impl Iterator<Item = (&OwnedComponent, &Definition)> {
         self.definitions.iter()
     }

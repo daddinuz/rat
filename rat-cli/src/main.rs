@@ -6,14 +6,18 @@
 
 mod error;
 
+use std::cell::RefCell;
 use std::fs::{File, OpenOptions};
 use std::io::{self, ErrorKind, IsTerminal, Read, Write as IoWrite};
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::{env, fs};
 
 use include_dir::{Dir, DirEntry, include_dir};
+use rustyline::completion::Completer;
 use rustyline::error::ReadlineError;
 use rustyline::highlight::MatchingBracketHighlighter;
+use rustyline::hint::HistoryHinter;
 use rustyline::validate::MatchingBracketValidator;
 use rustyline::{
     Cmd, ConditionalEventHandler, Editor, Event, EventContext, EventHandler, Helper, KeyEvent,
@@ -21,6 +25,7 @@ use rustyline::{
 };
 use rustyline_derive::{Completer, Highlighter, Hinter, Validator};
 
+use rat::component::OwnedComponent;
 use rat::context::Context;
 use rat::parser::{Origin, Parser};
 use rat::quote::{self, Quote};
@@ -38,9 +43,9 @@ fn main() -> Result<(), CliError> {
     let mut command = String::new();
     let mut flag_help = false;
     let mut flag_interactive = false;
+    let mut flag_install_stdlib = false;
     let mut flag_license = false;
     let mut flag_quiet = false;
-    let mut flag_install_stdlib = false;
     let mut flag_version = false;
 
     env::args()
@@ -52,9 +57,9 @@ fn main() -> Result<(), CliError> {
                 _ if arg.starts_with("--command=") => command.push_str(&arg["--command=".len()..]),
                 "-h" | "--help" => flag_help = true,
                 "-i" | "--interactive" => flag_interactive = true,
+                "--install-stdlib" => flag_install_stdlib = true,
                 "-l" | "--license" => flag_license = true,
                 "-q" | "--quiet" => flag_quiet = true,
-                "--install-stdlib" => flag_install_stdlib = true,
                 "--version" => flag_version = true,
                 _ => return Err(CliError::from(format!("unknown option: '{arg}'"))),
             }
@@ -66,7 +71,7 @@ fn main() -> Result<(), CliError> {
 
     if flag_install_stdlib || !rat::stdlib_dir().exists() {
         if !flag_quiet {
-            println!("Installing rat's stdlib to {:?}...", rat::stdlib_dir());
+            println!("Installing Rat's stdlib to {:?}...", rat::stdlib_dir());
         }
 
         if rat::stdlib_dir().exists() {
@@ -128,10 +133,11 @@ visit https://www.mozilla.org/MPL/2.0/ for info.
         return Ok(());
     }
 
-    repl(&mut parser, &mut context)
+    repl(parser, context)
 }
 
-fn repl(parser: &mut Parser, context: &mut Context) -> Result<(), CliError> {
+fn repl(parser: Parser, mut context: Context) -> Result<(), CliError> {
+    let parser = Rc::new(RefCell::new(parser));
     let history_file_path = history_file_path();
 
     OpenOptions::new()
@@ -143,7 +149,7 @@ fn repl(parser: &mut Parser, context: &mut Context) -> Result<(), CliError> {
         .consume();
 
     let mut editor = Editor::new()?;
-    editor.set_helper(Some(PromptHelper::default()));
+    editor.set_helper(Some(PromptHelper::new(parser.clone())));
     editor.bind_sequence(
         KeyEvent::from('\t'),
         EventHandler::Conditional(Box::new(TabEventHandler)),
@@ -168,8 +174,12 @@ fn repl(parser: &mut Parser, context: &mut Context) -> Result<(), CliError> {
                     .map_err(Report::report)
                     .consume();
 
-                match parser.parse(Origin::Unknown, line).map(Quote::from) {
-                    Ok(quote) => eval(Origin::Unknown, &quote, context, true)?,
+                match parser
+                    .borrow_mut()
+                    .parse(Origin::Unknown, line)
+                    .map(Quote::from)
+                {
+                    Ok(quote) => eval(Origin::Unknown, &quote, &mut context, true)?,
                     Err(error) => error.report(),
                 }
             }
@@ -272,28 +282,79 @@ fn read_file_to_string<P: AsRef<Path>>(path: P, string: &mut String) -> io::Resu
     file.read_to_string(string)
 }
 
-#[derive(Default, Helper, Completer, Highlighter, Hinter, Validator)]
+#[derive(Helper, Completer, Highlighter, Hinter, Validator)]
 struct PromptHelper {
     #[rustyline(Completer)]
-    completer: (),
+    completer: WordCompleter,
     #[rustyline(Highlighter)]
     highlighter: MatchingBracketHighlighter,
     #[rustyline(Validator)]
     validator: MatchingBracketValidator,
     #[rustyline(Hinter)]
-    hinter: (),
+    hinter: HistoryHinter,
+}
+
+impl PromptHelper {
+    fn new(parser: Rc<RefCell<Parser>>) -> Self {
+        Self {
+            completer: WordCompleter::new(parser),
+            highlighter: Default::default(),
+            validator: Default::default(),
+            hinter: Default::default(),
+        }
+    }
+}
+
+#[derive(Default)]
+struct WordCompleter {
+    parser: Rc<RefCell<Parser>>,
+}
+
+impl WordCompleter {
+    fn new(parser: Rc<RefCell<Parser>>) -> Self {
+        Self { parser }
+    }
+}
+
+impl Completer for WordCompleter {
+    type Candidate = String;
+
+    fn complete(
+        &self,
+        line: &str,
+        pos: usize,
+        _: &rustyline::Context<'_>,
+    ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
+        let (start, word) =
+            rustyline::completion::extract_word(line, pos, None, char::is_whitespace);
+
+        let parser = self.parser.borrow();
+        let mut candidates = parser
+            .dictionary()
+            .components()
+            .chain(parser.prelude().components())
+            .map(OwnedComponent::as_str)
+            .chain([":define", ":import"])
+            .filter(|s| s.starts_with(word))
+            .map(ToString::to_string)
+            .collect::<Vec<String>>();
+
+        candidates.sort_by_key(String::len);
+        Ok((start, candidates))
+    }
 }
 
 struct TabEventHandler;
 
 impl ConditionalEventHandler for TabEventHandler {
+    // tab is replaced by two whitespaces
     fn handle(&self, _: &Event, n: RepeatCount, _: bool, ctx: &EventContext) -> Option<Cmd> {
         ctx.line()[..ctx.pos()]
             .chars()
             .last()
             .unwrap_or(' ')
             .is_whitespace()
-            .then(|| Cmd::Insert(n, '\t'.into()))
+            .then(|| Cmd::Insert(n, "  ".to_string()))
     }
 }
 
@@ -319,16 +380,17 @@ File:
   Files get executed in order of appearance.
 
 Option:
-  -c --command      Execute program passed as argument.
-                    This option MUST be immediately followed by '='
-                    sign without any space, e.g. `rat -c='42 say'`.
-                    Commands get executed in order of appearance
-                    but after any source file.
-  -h --help         Show this message.
-  -l --license      Show software license.
-  -i --interactive  Start an interactive session.
-  -q --quiet        Disable the greeting message.
-     --version      Display the language and CLI version.
+  -c --command         Execute program passed as argument.
+                       This option MUST be immediately followed by '='
+                       sign without any space, e.g. `rat -c='42 say'`.
+                       Commands get executed in order of appearance
+                       but after any source file.
+  -h --help            Show this message.
+  -i --interactive     Start an interactive session.
+     --install-stdlib  Install stdlib, reinstall if already present.
+  -l --license         Show software license.
+  -q --quiet           Disable the greeting message.
+     --version         Display the language and CLI version.
 "###;
 
 static LICENSE: &str = r###"
